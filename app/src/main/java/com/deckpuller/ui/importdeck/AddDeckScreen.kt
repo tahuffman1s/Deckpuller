@@ -107,7 +107,7 @@ fun AddDeckScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 items(results, key = { it.archidektId }) { summary ->
                     Column(
                         modifier = Modifier
