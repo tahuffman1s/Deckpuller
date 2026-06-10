@@ -84,7 +84,7 @@ class DefaultDeckRepository @Inject constructor(
     override suspend fun setPulled(cardId: Long, pulled: Int) = dao.updatePulled(cardId, pulled)
 
     override suspend fun searchDecks(username: String): List<DeckSummary> =
-        archidektApi.searchByOwner(owner = username).results.map { dto ->
+        archidektApi.searchByOwner(username = username).results.map { dto ->
             DeckSummary(
                 archidektId = dto.id.toString(),
                 name = dto.name,

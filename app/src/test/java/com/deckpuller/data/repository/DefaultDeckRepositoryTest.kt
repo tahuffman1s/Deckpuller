@@ -61,7 +61,7 @@ class DefaultDeckRepositoryTest {
         val list: ArchidektDeckListDto = ArchidektDeckListDto(),
     ) : ArchidektApi {
         override suspend fun getDeck(deckId: String) = deck(deckId)
-        override suspend fun searchByOwner(owner: String, exact: Boolean, orderBy: String, pageSize: Int) = list
+        override suspend fun searchByOwner(username: String, orderBy: String, pageSize: Int) = list
     }
 
     private fun repo(archidekt: ArchidektApi, scryfall: ScryfallApi) =

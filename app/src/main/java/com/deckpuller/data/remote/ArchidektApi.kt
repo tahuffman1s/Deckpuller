@@ -10,10 +10,12 @@ interface ArchidektApi {
     @GET("decks/{id}/")
     suspend fun getDeck(@Path("id") deckId: String): ArchidektDeckDto
 
+    // Archidekt's `owner` query param expects a numeric user id; filtering by
+    // username requires `ownerUsername` (an unknown `owner` is ignored and the
+    // API returns the global recent-decks feed). See decks/v3/ probing.
     @GET("decks/v3/")
     suspend fun searchByOwner(
-        @Query("owner") owner: String,
-        @Query("ownerexact") exact: Boolean = true,
+        @Query("ownerUsername") username: String,
         @Query("orderBy") orderBy: String = "-updatedAt",
         @Query("pageSize") pageSize: Int = 50,
     ): ArchidektDeckListDto
