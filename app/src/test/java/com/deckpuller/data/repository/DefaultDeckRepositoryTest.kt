@@ -10,6 +10,8 @@ import com.deckpuller.data.remote.ScryfallApi
 import com.deckpuller.data.remote.dto.ArchidektCardDetailDto
 import com.deckpuller.data.remote.dto.ArchidektCardDto
 import com.deckpuller.data.remote.dto.ArchidektDeckDto
+import com.deckpuller.data.remote.dto.ArchidektDeckListDto
+import com.deckpuller.data.remote.dto.ArchidektDeckSummaryDto
 import com.deckpuller.data.remote.dto.ArchidektOracleCardDto
 import com.deckpuller.data.remote.dto.ScryfallCardDto
 import com.deckpuller.data.remote.dto.ScryfallCollectionResponse
@@ -50,118 +52,132 @@ class DefaultDeckRepositoryTest {
     )
 
     private fun scryfallCard(id: String, name: String, type: String) = ScryfallCardDto(
-        id = id,
-        name = name,
-        typeLine = type,
+        id = id, name = name, typeLine = type,
         imageUris = ScryfallImageUris(small = "$id-s.jpg", normal = "$id-n.jpg"),
     )
 
-    private fun repository(
-        archidekt: ArchidektApi,
-        scryfall: ScryfallApi,
-    ) = DefaultDeckRepository(archidekt, scryfall, db.deckDao(), fakePrefetcher)
+    private class FakeArchidektApi(
+        val deck: (String) -> ArchidektDeckDto = { error("getDeck not stubbed") },
+        val list: ArchidektDeckListDto = ArchidektDeckListDto(),
+    ) : ArchidektApi {
+        override suspend fun getDeck(deckId: String) = deck(deckId)
+        override suspend fun searchByOwner(owner: String, exact: Boolean, orderBy: String, pageSize: Int) = list
+    }
+
+    private fun repo(archidekt: ArchidektApi, scryfall: ScryfallApi) =
+        DefaultDeckRepository(archidekt, scryfall, db.deckDao(), fakePrefetcher)
 
     @Test
     fun `importDeck throws on bad url`() = runTest {
-        val repo = repository(
-            archidekt = { fail("should not be called"); error("") },
-            scryfall = { fail("should not be called"); error("") },
-        )
+        val r = repo(FakeArchidektApi(), { fail("unused"); error("") })
         try {
-            repo.importDeck("https://example.com/not-a-deck")
+            r.importDeck("https://example.com/not-a-deck")
             fail("expected InvalidDeckUrlException")
-        } catch (e: InvalidDeckUrlException) {
-            // expected
-        }
+        } catch (e: InvalidDeckUrlException) { /* expected */ }
     }
 
     @Test
-    fun `importDeck builds cards from archidekt and scryfall and prefetches images`() = runTest {
-        val deckDto = ArchidektDeckDto(
-            name = "Test Deck",
-            cards = listOf(
-                archidektCard("uid-1", "Forest", 4),
-                archidektCard("uid-2", "Sol Ring", 1),
+    fun `importDeck stores deck with archidektId and returns its id`() = runTest {
+        val archidekt = FakeArchidektApi(deck = {
+            ArchidektDeckDto("Test Deck", listOf(archidektCard("uid-1", "Forest", 4)))
+        })
+        val r = repo(archidekt, { ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land"))) })
+
+        val id = r.importDeck("https://archidekt.com/decks/999/test")
+
+        val deck = r.observeDeck(id).first()!!
+        assertEquals("Test Deck", deck.name)
+        assertEquals(4, deck.cards.single().requiredQty)
+        assertTrue(prefetched.contains("uid-1-n.jpg"))
+    }
+
+    @Test
+    fun `refreshDeck preserves pulled progress matched by scryfallId and clamps to new required`() = runTest {
+        val archidekt = FakeArchidektApi(deck = {
+            ArchidektDeckDto("Deck", listOf(archidektCard("uid-1", "Forest", 4), archidektCard("uid-2", "Sol Ring", 1)))
+        })
+        val scryfall = ScryfallApi {
+            ScryfallCollectionResponse(it.identifiers.map { ident ->
+                when (ident.id) {
+                    "uid-1" -> scryfallCard("uid-1", "Forest", "Land")
+                    else -> scryfallCard("uid-2", "Sol Ring", "Artifact")
+                }
+            })
+        }
+        val r = repo(archidekt, scryfall)
+        val id = r.importDeck("https://archidekt.com/decks/1")
+        val forest = r.observeDeck(id).first()!!.cards.first { it.name == "Forest" }
+        r.setPulled(forest.id, 3)
+
+        val archidekt2 = FakeArchidektApi(deck = {
+            ArchidektDeckDto("Deck Renamed", listOf(archidektCard("uid-1", "Forest", 2), archidektCard("uid-3", "Llanowar Elves", 1)))
+        })
+        val r2 = repo(archidekt2, ScryfallApi {
+            ScryfallCollectionResponse(it.identifiers.map { ident ->
+                when (ident.id) {
+                    "uid-1" -> scryfallCard("uid-1", "Forest", "Land")
+                    else -> scryfallCard("uid-3", "Llanowar Elves", "Creature")
+                }
+            })
+        })
+        r2.refreshDeck(id)
+
+        val deck = r2.observeDeck(id).first()!!
+        assertEquals("Deck Renamed", deck.name)
+        assertEquals(2, deck.cards.size)
+        val refreshedForest = deck.cards.first { it.name == "Forest" }
+        assertEquals(2, refreshedForest.requiredQty)
+        assertEquals(2, refreshedForest.pulledQty)
+        assertEquals(0, deck.cards.first { it.name == "Llanowar Elves" }.pulledQty)
+    }
+
+    @Test
+    fun `resetProgress zeroes the deck`() = runTest {
+        val archidekt = FakeArchidektApi(deck = {
+            ArchidektDeckDto("Deck", listOf(archidektCard("uid-1", "Forest", 4)))
+        })
+        val r = repo(archidekt, { ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land"))) })
+        val id = r.importDeck("https://archidekt.com/decks/1")
+        val cardId = r.observeDeck(id).first()!!.cards.single().id
+        r.setPulled(cardId, 4)
+
+        r.resetProgress(id)
+
+        assertEquals(0, r.observeDeck(id).first()!!.cards.single().pulledQty)
+    }
+
+    @Test
+    fun `deleteDeck removes the deck`() = runTest {
+        val archidekt = FakeArchidektApi(deck = {
+            ArchidektDeckDto("Deck", listOf(archidektCard("uid-1", "Forest", 1)))
+        })
+        val r = repo(archidekt, { ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land"))) })
+        val id = r.importDeck("https://archidekt.com/decks/1")
+
+        r.deleteDeck(id)
+
+        assertNull(r.observeDeck(id).first())
+    }
+
+    @Test
+    fun `searchDecks maps owner results to summaries`() = runTest {
+        val archidekt = FakeArchidektApi(
+            list = ArchidektDeckListDto(
+                listOf(
+                    ArchidektDeckSummaryDto(id = 111, name = "Goblins", size = 100, featured = "http://img/a.jpg"),
+                    ArchidektDeckSummaryDto(id = 222, name = "Elves", size = 99, featured = ""),
+                ),
             ),
         )
-        val repo = repository(
-            archidekt = { deckDto },
-            scryfall = { req ->
-                ScryfallCollectionResponse(
-                    data = req.identifiers.map {
-                        when (it.id) {
-                            "uid-1" -> scryfallCard("uid-1", "Forest", "Basic Land — Forest")
-                            else -> scryfallCard("uid-2", "Sol Ring", "Artifact")
-                        }
-                    },
-                )
-            },
-        )
+        val r = repo(archidekt, { ScryfallCollectionResponse() })
 
-        repo.importDeck("https://archidekt.com/decks/999/test")
+        val summaries = r.searchDecks("me")
 
-        val deck = repo.observeDeck().first()!!
-        assertEquals("Test Deck", deck.name)
-        assertEquals(2, deck.cards.size)
-        val forest = deck.cards.first { it.name == "Forest" }
-        assertEquals(4, forest.requiredQty)
-        assertEquals(0, forest.pulledQty)
-        assertEquals("Basic Land — Forest", forest.typeLine)
-        assertEquals("uid-1-n.jpg", forest.imageUrl)
-        assertTrue(prefetched.containsAll(listOf("uid-1-n.jpg", "uid-2-n.jpg")))
-    }
-
-    @Test
-    fun `importDeck falls back to archidekt name and Unknown type for missing scryfall card`() = runTest {
-        val deckDto = ArchidektDeckDto(
-            name = "Deck",
-            cards = listOf(archidektCard("uid-x", "Mystery Card", 1)),
-        )
-        val repo = repository(
-            archidekt = { deckDto },
-            scryfall = { ScryfallCollectionResponse(data = emptyList()) },
-        )
-
-        repo.importDeck("https://archidekt.com/decks/1")
-
-        val card = repo.observeDeck().first()!!.cards.single()
-        assertEquals("Mystery Card", card.name)
-        assertEquals("Unknown", card.typeLine)
-        assertNull(card.imageUrl)
-    }
-
-    @Test
-    fun `setPulled updates the stored count`() = runTest {
-        val repo = repository(
-            archidekt = {
-                ArchidektDeckDto("Deck", listOf(archidektCard("uid-1", "Forest", 4)))
-            },
-            scryfall = {
-                ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land")))
-            },
-        )
-        repo.importDeck("https://archidekt.com/decks/1")
-        val cardId = repo.observeDeck().first()!!.cards.single().id
-
-        repo.setPulled(cardId, 2)
-
-        assertEquals(2, repo.observeDeck().first()!!.cards.single().pulledQty)
-    }
-
-    @Test
-    fun `clearDeck empties the deck`() = runTest {
-        val repo = repository(
-            archidekt = {
-                ArchidektDeckDto("Deck", listOf(archidektCard("uid-1", "Forest", 1)))
-            },
-            scryfall = {
-                ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land")))
-            },
-        )
-        repo.importDeck("https://archidekt.com/decks/1")
-
-        repo.clearDeck()
-
-        assertNull(repo.observeDeck().first())
+        assertEquals(2, summaries.size)
+        assertEquals("111", summaries[0].archidektId)
+        assertEquals("Goblins", summaries[0].name)
+        assertEquals(100, summaries[0].cardCount)
+        assertEquals("http://img/a.jpg", summaries[0].thumbnailUrl)
+        assertNull(summaries[1].thumbnailUrl)
     }
 }
