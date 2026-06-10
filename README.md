@@ -6,6 +6,12 @@
 
 Import a deck from [Archidekt](https://archidekt.com), then tap your way through it as you physically pull each card from your collection — with live progress, card images, and everything saved per deck.
 
+<br/>
+
+<img src="docs/screenshots/demo.gif" width="280" alt="DeckPuller demo — open a deck, pull cards, and search the list" />
+
+<br/><br/>
+
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](#)
 [![Language](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](#)
 [![UI](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](#)
