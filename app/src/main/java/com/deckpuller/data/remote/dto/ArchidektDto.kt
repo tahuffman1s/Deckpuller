@@ -24,3 +24,16 @@ data class ArchidektCardDetailDto(
 data class ArchidektOracleCardDto(
     val name: String,
 )
+
+@Serializable
+data class ArchidektDeckListDto(
+    val results: List<ArchidektDeckSummaryDto> = emptyList(),
+)
+
+@Serializable
+data class ArchidektDeckSummaryDto(
+    val id: Long,
+    val name: String,
+    val size: Int = 0,
+    val featured: String = "",
+)

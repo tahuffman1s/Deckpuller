@@ -53,6 +53,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.datastore.preferences)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -77,6 +79,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.konfetti.compose)
+    implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -84,6 +87,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
     testImplementation(libs.turbine)
+    testImplementation("io.mockk:mockk:1.13.13")
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)

@@ -1,52 +1,77 @@
 package com.deckpuller.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.deckpuller.ui.importdeck.ImportScreen
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.deckpuller.ui.decklist.DeckListScreen
+import com.deckpuller.ui.decklist.DeckListViewModel
+import com.deckpuller.ui.importdeck.AddDeckScreen
+import com.deckpuller.ui.importdeck.ImportUiState
 import com.deckpuller.ui.importdeck.ImportViewModel
-import com.deckpuller.ui.pull.CelebrationOverlay
-import com.deckpuller.ui.pull.PullScreen
-import com.deckpuller.ui.pull.PullViewModel
+import com.deckpuller.ui.pull.PullRoute
+
+private const val DECK_LIST = "deckList"
+private const val ADD_DECK = "addDeck"
+private const val PULL = "pull"
 
 @Composable
-fun AppRoot(
-    mainViewModel: MainViewModel = hiltViewModel(),
-) {
-    val hasDeck by mainViewModel.hasDeck.collectAsStateWithLifecycle()
+fun AppRoot() {
+    val navController = rememberNavController()
 
-    when (hasDeck) {
-        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    NavHost(navController = navController, startDestination = DECK_LIST) {
+        composable(DECK_LIST) {
+            val viewModel: DeckListViewModel = hiltViewModel()
+            val items by viewModel.items.collectAsStateWithLifecycle()
+            DeckListScreen(
+                decks = items,
+                onDeckClick = { id: Long -> navController.navigate("$PULL/$id") },
+                onAddDeck = { navController.navigate(ADD_DECK) },
+                onDeleteDeck = viewModel::delete,
+            )
         }
-        false -> ImportRoute()
-        true -> PullRoute()
-    }
-}
 
-@Composable
-private fun ImportRoute(viewModel: ImportViewModel = hiltViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    ImportScreen(state = state, onImport = viewModel::import)
-}
+        composable(ADD_DECK) {
+            val viewModel: ImportViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            val results by viewModel.results.collectAsStateWithLifecycle()
+            val savedUsername by viewModel.savedUsername.collectAsStateWithLifecycle()
 
-@Composable
-private fun PullRoute(viewModel: PullViewModel = hiltViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    state?.let { pull ->
-        PullScreen(
-            state = pull,
-            onIncrement = viewModel::increment,
-            onDecrement = viewModel::decrement,
-        )
-        if (pull.isComplete) {
-            CelebrationOverlay(onFinished = viewModel::clear)
+            LaunchedEffect(state) {
+                val s = state
+                if (s is ImportUiState.Imported) {
+                    navController.navigate("$PULL/${s.deckId}") {
+                        popUpTo(DECK_LIST)
+                    }
+                    viewModel.dismissError()
+                }
+            }
+
+            AddDeckScreen(
+                state = state,
+                results = results,
+                savedUsername = savedUsername,
+                onImportUrl = viewModel::import,
+                onFindMyDecks = viewModel::findMyDecks,
+                onPickDeck = viewModel::importSummary,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = "$PULL/{deckId}",
+            arguments = listOf(navArgument("deckId") { type = NavType.LongType }),
+        ) {
+            PullRoute(
+                onBack = { navController.popBackStack() },
+                onAddDeck = { navController.navigate(ADD_DECK) },
+            )
         }
     }
 }

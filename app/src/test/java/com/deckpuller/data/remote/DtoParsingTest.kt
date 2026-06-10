@@ -86,4 +86,23 @@ class DtoParsingTest {
         assertEquals("front.jpg", card.bestImageUrl())
         assertNull(card.imageUris)
     }
+
+    @Test
+    fun `parses archidekt deck list response`() {
+        val raw = """
+            {"count":2,"next":null,"results":[
+              {"id":111,"name":"Goblins","size":100,"featured":"http://img/a.jpg","private":false,"owner":{"username":"me"}},
+              {"id":222,"name":"Elves","size":99,"featured":"","private":false,"owner":{"username":"me"}}
+            ]}
+        """.trimIndent()
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val dto = json.decodeFromString(
+            com.deckpuller.data.remote.dto.ArchidektDeckListDto.serializer(), raw,
+        )
+        assertEquals(2, dto.results.size)
+        assertEquals(111L, dto.results[0].id)
+        assertEquals("Goblins", dto.results[0].name)
+        assertEquals(100, dto.results[0].size)
+        assertEquals("http://img/a.jpg", dto.results[0].featured)
+    }
 }
