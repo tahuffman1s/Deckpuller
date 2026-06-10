@@ -34,6 +34,23 @@ class CardRowTest {
     }
 
     @Test
+    fun `tapping the image triggers onImageClick and not increment`() {
+        var imageClicked = false
+        var incremented = false
+        rule.setContent {
+            CardRow(
+                card(pulled = 0, required = 1),
+                onIncrement = { incremented = true },
+                onDecrement = {},
+                onImageClick = { imageClicked = true },
+            )
+        }
+        rule.onNodeWithContentDescription("Sol Ring").performClick()
+        assertEquals(true, imageClicked)
+        assertEquals(false, incremented)
+    }
+
+    @Test
     fun `decrement button is disabled at zero`() {
         rule.setContent {
             CardRow(card(pulled = 0, required = 4), onIncrement = {}, onDecrement = {})

@@ -31,6 +31,7 @@ fun CardRow(
     card: DeckCard,
     onIncrement: (DeckCard) -> Unit,
     onDecrement: (DeckCard) -> Unit,
+    onImageClick: (DeckCard) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -53,7 +54,8 @@ fun CardRow(
             modifier = Modifier
                 .size(width = 40.dp, height = 56.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onImageClick(card) },
         )
         Text(
             text = card.name,

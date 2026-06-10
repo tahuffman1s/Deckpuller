@@ -1,7 +1,10 @@
 package com.deckpuller.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,12 +24,18 @@ fun AppRoot(
 ) {
     val hasDeck by mainViewModel.hasDeck.collectAsStateWithLifecycle()
 
-    when (hasDeck) {
-        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    Box(
+        Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        when (hasDeck) {
+            null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            false -> ImportRoute()
+            true -> PullRoute()
         }
-        false -> ImportRoute()
-        true -> PullRoute()
     }
 }
 
