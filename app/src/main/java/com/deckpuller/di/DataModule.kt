@@ -77,7 +77,9 @@ abstract class DataModule {
         @Provides
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "deckpuller.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "deckpuller.db")
+                .fallbackToDestructiveMigration()
+                .build()
 
         @Provides
         @Singleton

@@ -7,7 +7,7 @@ import com.deckpuller.data.local.entity.DeckEntity
 
 @Database(
     entities = [DeckEntity::class, CardEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
