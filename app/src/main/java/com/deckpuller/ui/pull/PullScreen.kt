@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,8 +47,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -108,6 +114,16 @@ fun PullScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var zoomedCard by remember { mutableStateOf<DeckCard?>(null) }
 
+    val searchFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Opening search jumps focus to the field and raises the keyboard automatically.
+    LaunchedEffect(searching) {
+        if (searching) {
+            searchFocus.requestFocus()
+            keyboard?.show()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
@@ -134,7 +150,19 @@ fun PullScreen(
                             onValueChange = onSearchChange,
                             singleLine = true,
                             placeholder = { Text("Search cards") },
-                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Search field" },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            shape = RoundedCornerShape(28.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocus)
+                                .semantics { contentDescription = "Search field" },
                         )
                     } else {
                         Text(state.deckName)
@@ -256,15 +284,33 @@ private fun MiniAction(label: String, icon: ImageVector, onClick: () -> Unit) {
 
 @Composable
 private fun PullHeader(pulled: Int, total: Int, isRefreshing: Boolean) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("$pulled / $total pulled", style = MaterialTheme.typography.bodyMedium)
-        LinearProgressIndicator(
-            progress = { if (total == 0) 0f else pulled.toFloat() / total },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        )
-        if (isRefreshing) {
-            Text("Refreshing…", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
+    val fraction = if (total == 0) 0f else pulled.toFloat() / total
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (isRefreshing) "Refreshing…" else "$pulled / $total pulled",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "${(fraction * 100).toInt()}%",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
+        LinearProgressIndicator(
+            progress = { fraction },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(10.dp)
+                .clip(RoundedCornerShape(8.dp)),
+        )
     }
 }
 
