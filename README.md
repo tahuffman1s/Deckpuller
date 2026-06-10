@@ -12,6 +12,7 @@ Import a deck from [Archidekt](https://archidekt.com), then tap your way through
 
 <br/><br/>
 
+[![CI](https://github.com/tahuffman1s/Deckpuller/actions/workflows/ci.yml/badge.svg)](https://github.com/tahuffman1s/Deckpuller/actions/workflows/ci.yml)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](#)
 [![Language](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](#)
 [![UI](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](#)
@@ -133,6 +134,21 @@ cd Deckpuller
 ```
 
 Or just open the project in Android Studio and hit **Run**.
+
+## 🔁 CI / CD
+
+GitHub Actions runs two pipelines:
+
+- **CI** — on every push/PR to `main`: Android Lint → unit tests → debug APK, with the APK and test/lint reports uploaded as artifacts.
+- **Release** — on a `v*` tag (or manual dispatch): builds a **signed** release **APK + AAB** and publishes a GitHub Release with auto-generated notes.
+
+Cut a release by tagging:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+See **[docs/RELEASING.md](docs/RELEASING.md)** for the one-time signing-secret setup and full details.
 
 ## 🔌 Data sources
 

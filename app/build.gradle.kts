@@ -15,9 +15,27 @@ android {
         applicationId = "com.deckpuller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Overridable from CI: -PversionName=1.2.3 -PversionCode=42
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Release signing is driven by environment variables that CI populates from
+    // GitHub Secrets. When they're absent (local builds, forks, missing secrets),
+    // the release build is simply left unsigned instead of failing.
+    val keystorePath = System.getenv("KEYSTORE_FILE")
+    val hasReleaseKeystore = keystorePath != null && file(keystorePath).exists()
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -27,6 +45,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = if (hasReleaseKeystore) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {
