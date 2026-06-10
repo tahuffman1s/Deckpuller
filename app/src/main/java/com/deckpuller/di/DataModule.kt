@@ -44,7 +44,15 @@ abstract class DataModule {
 
         @Provides
         @Singleton
-        fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder().build()
+        fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", "DeckPuller/1.0")
+                    .header("Accept", "application/json")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
 
         @Provides
         @Singleton
