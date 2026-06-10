@@ -86,6 +86,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
     testImplementation(libs.turbine)
+    testImplementation("io.mockk:mockk:1.13.13")
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
