@@ -33,3 +33,13 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Kotlin compiler / Gradle plugin session files
+.kotlin/
+
+# Compiled class files (none should be committed in a source repo)
+*.class
+
+# Stray extracted library artifacts accidentally unpacked into the repo root
+/META-INF/
+/retrofit2/
