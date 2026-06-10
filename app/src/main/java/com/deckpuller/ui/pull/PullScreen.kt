@@ -3,8 +3,10 @@ package com.deckpuller.ui.pull
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,17 +17,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -104,6 +110,16 @@ fun PullScreen(
 
     Scaffold(
         modifier = modifier,
+        floatingActionButton = {
+            if (!searching) {
+                ActionsFab(
+                    onSearch = { searching = true },
+                    onRefresh = onRefresh,
+                    onReset = { showResetDialog = true },
+                    onAddDeck = onAddDeck,
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -128,19 +144,6 @@ fun PullScreen(
                     if (searching) {
                         IconButton(onClick = { searching = false; onSearchChange("") }) {
                             Icon(Icons.Filled.Close, contentDescription = "Close search")
-                        }
-                    } else {
-                        IconButton(onClick = { searching = true }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search")
-                        }
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-                        }
-                        IconButton(onClick = { showResetDialog = true }) {
-                            Icon(Icons.Filled.RestartAlt, contentDescription = "Reset progress")
-                        }
-                        IconButton(onClick = onAddDeck) {
-                            Icon(Icons.Filled.Add, contentDescription = "Add another deck")
                         }
                     }
                 },
@@ -196,6 +199,58 @@ fun PullScreen(
 
     zoomedCard?.let { card ->
         CardImageDialog(card = card, onDismiss = { zoomedCard = null })
+    }
+}
+
+/** Expandable speed-dial FAB holding the deck actions (search, refresh, reset, add). */
+@Composable
+private fun ActionsFab(
+    onSearch: () -> Unit,
+    onRefresh: () -> Unit,
+    onReset: () -> Unit,
+    onAddDeck: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (expanded) {
+            MiniAction("Search", Icons.Filled.Search) { expanded = false; onSearch() }
+            MiniAction("Refresh", Icons.Filled.Refresh) { expanded = false; onRefresh() }
+            MiniAction("Reset progress", Icons.Filled.RestartAlt) { expanded = false; onReset() }
+            MiniAction("Add another deck", Icons.Filled.Add) { expanded = false; onAddDeck() }
+        }
+        FloatingActionButton(onClick = { expanded = !expanded }) {
+            Icon(
+                imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.MoreVert,
+                contentDescription = if (expanded) "Close actions" else "Actions",
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiniAction(label: String, icon: ImageVector, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 2.dp,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+        SmallFloatingActionButton(onClick = onClick) {
+            Icon(icon, contentDescription = label)
+        }
     }
 }
 

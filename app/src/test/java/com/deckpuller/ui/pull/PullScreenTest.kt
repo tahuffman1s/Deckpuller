@@ -13,8 +13,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w411dp-h891dp")
 class PullScreenTest {
 
     @get:Rule val rule = createComposeRule()
@@ -42,6 +44,7 @@ class PullScreenTest {
                 onCelebrationFinished = {},
             )
         }
+        rule.onNodeWithContentDescription("Actions").performClick() // expand the speed-dial FAB
         rule.onNodeWithContentDescription("Reset progress").performClick()
         rule.onNodeWithText("Reset").performClick()
         assertEquals(true, reset)
@@ -59,6 +62,7 @@ class PullScreenTest {
                 onCelebrationFinished = {},
             )
         }
+        rule.onNodeWithContentDescription("Actions").performClick() // expand the speed-dial FAB
         rule.onNodeWithContentDescription("Search").performClick()
         rule.onNodeWithContentDescription("Search field").performTextInput("mount")
         assertEquals("mount", typed)
