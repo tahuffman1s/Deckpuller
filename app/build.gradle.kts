@@ -79,6 +79,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.konfetti.compose)
+    implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
