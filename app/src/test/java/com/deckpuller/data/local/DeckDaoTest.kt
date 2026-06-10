@@ -2,8 +2,6 @@ package com.deckpuller.data.local
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import app.cash.turbine.test
-import com.deckpuller.data.local.entity.CURRENT_DECK_ID
 import com.deckpuller.data.local.entity.CardEntity
 import com.deckpuller.data.local.entity.DeckEntity
 import kotlinx.coroutines.flow.first
@@ -34,61 +32,54 @@ class DeckDaoTest {
     @After
     fun tearDown() = db.close()
 
-    private fun card(name: String, required: Int, pulled: Int = 0) = CardEntity(
-        deckId = CURRENT_DECK_ID,
-        scryfallId = name,
-        name = name,
-        typeLine = "Creature",
-        imageUrl = null,
-        requiredQty = required,
-        pulledQty = pulled,
+    private fun deck(name: String, archidektId: String) =
+        DeckEntity(name = name, archidektId = archidektId, sourceUrl = "url/$archidektId", importedAt = 1L)
+
+    private fun card(scryfallId: String, required: Int, pulled: Int = 0) = CardEntity(
+        deckId = 0, scryfallId = scryfallId, name = scryfallId,
+        typeLine = "Creature", imageUrl = null, requiredQty = required, pulledQty = pulled,
     )
 
     @Test
-    fun `observeDeck emits null when empty`() = runTest {
-        assertNull(dao.observeDeck().first())
-    }
-
-    @Test
-    fun `replaceDeck stores deck with its cards`() = runTest {
-        dao.replaceDeck(
-            DeckEntity(name = "Deck A", importedAt = 1L),
-            listOf(card("Forest", 4), card("Sol Ring", 1)),
-        )
-
-        val stored = dao.observeDeck().first()!!
-        assertEquals("Deck A", stored.deck.name)
+    fun `insertDeckWithCards stores deck and returns its id`() = runTest {
+        val id = dao.insertDeckWithCards(deck("A", "1"), listOf(card("forest", 4), card("sol", 1)))
+        val stored = dao.observeDeck(id).first()!!
+        assertEquals("A", stored.deck.name)
         assertEquals(2, stored.cards.size)
+        assertEquals(id, stored.cards.first().deckId)
     }
 
     @Test
-    fun `replaceDeck wipes the previous deck`() = runTest {
-        dao.replaceDeck(DeckEntity(name = "Old", importedAt = 1L), listOf(card("Forest", 1)))
-        dao.replaceDeck(DeckEntity(name = "New", importedAt = 2L), listOf(card("Island", 1)))
-
-        val stored = dao.observeDeck().first()!!
-        assertEquals("New", stored.deck.name)
-        assertEquals(1, stored.cards.size)
-        assertEquals("Island", stored.cards.single().name)
+    fun `observeDecks lists multiple decks`() = runTest {
+        dao.insertDeckWithCards(deck("A", "1"), listOf(card("x", 1)))
+        dao.insertDeckWithCards(deck("B", "2"), listOf(card("y", 1)))
+        assertEquals(2, dao.observeDecks().first().size)
     }
 
     @Test
-    fun `updatePulled changes the pulled count and emits`() = runTest {
-        dao.replaceDeck(DeckEntity(name = "Deck", importedAt = 1L), listOf(card("Forest", 4)))
-        val cardId = dao.observeDeck().first()!!.cards.single().id
-
-        dao.observeDeck().test {
-            assertEquals(0, awaitItem()!!.cards.single().pulledQty)
-            dao.updatePulled(cardId, 3)
-            assertEquals(3, awaitItem()!!.cards.single().pulledQty)
-            cancelAndIgnoreRemainingEvents()
-        }
+    fun `deleteDeck removes one deck and cascades its cards`() = runTest {
+        val a = dao.insertDeckWithCards(deck("A", "1"), listOf(card("x", 1)))
+        val b = dao.insertDeckWithCards(deck("B", "2"), listOf(card("y", 1)))
+        dao.deleteDeck(a)
+        assertNull(dao.observeDeck(a).first())
+        assertEquals(1, dao.observeDecks().first().size)
+        assertEquals("B", dao.observeDeck(b).first()!!.deck.name)
     }
 
     @Test
-    fun `clearDecks removes everything`() = runTest {
-        dao.replaceDeck(DeckEntity(name = "Deck", importedAt = 1L), listOf(card("Forest", 1)))
-        dao.clearDecks()
-        assertNull(dao.observeDeck().first())
+    fun `resetProgress zeroes only the target deck`() = runTest {
+        val a = dao.insertDeckWithCards(deck("A", "1"), listOf(card("x", 4, pulled = 3)))
+        val b = dao.insertDeckWithCards(deck("B", "2"), listOf(card("y", 4, pulled = 2)))
+        dao.resetProgress(a)
+        assertEquals(0, dao.observeDeck(a).first()!!.cards.single().pulledQty)
+        assertEquals(2, dao.observeDeck(b).first()!!.cards.single().pulledQty)
+    }
+
+    @Test
+    fun `updatePulled changes a single card`() = runTest {
+        val id = dao.insertDeckWithCards(deck("A", "1"), listOf(card("x", 4)))
+        val cardId = dao.observeDeck(id).first()!!.cards.single().id
+        dao.updatePulled(cardId, 3)
+        assertEquals(3, dao.observeDeck(id).first()!!.cards.single().pulledQty)
     }
 }
