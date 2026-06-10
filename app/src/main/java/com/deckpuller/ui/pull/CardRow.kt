@@ -1,5 +1,6 @@
 package com.deckpuller.ui.pull
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,13 +42,18 @@ fun CardRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        val thumbnailPlaceholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
         AsyncImage(
             model = card.imageUrl,
             contentDescription = card.name,
             contentScale = ContentScale.Crop,
+            placeholder = thumbnailPlaceholder,
+            error = thumbnailPlaceholder,
+            fallback = thumbnailPlaceholder,
             modifier = Modifier
                 .size(width = 40.dp, height = 56.dp)
-                .clip(RoundedCornerShape(4.dp)),
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
         )
         Text(
             text = card.name,
