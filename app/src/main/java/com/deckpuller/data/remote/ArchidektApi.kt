@@ -4,7 +4,7 @@ import com.deckpuller.data.remote.dto.ArchidektDeckDto
 import retrofit2.http.GET
 import retrofit2.http.Path
 
-interface ArchidektApi {
+fun interface ArchidektApi {
     @GET("decks/{id}/")
     suspend fun getDeck(@Path("id") deckId: String): ArchidektDeckDto
 }

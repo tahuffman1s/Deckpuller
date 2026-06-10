@@ -6,7 +6,7 @@ import coil.request.ImageRequest
 import javax.inject.Inject
 
 /** Warms an image cache so cards display offline after import. */
-interface ImagePrefetcher {
+fun interface ImagePrefetcher {
     fun prefetch(urls: List<String>)
 }
 
