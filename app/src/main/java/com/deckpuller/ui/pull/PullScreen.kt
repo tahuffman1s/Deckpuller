@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
@@ -31,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,11 @@ fun PullRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var celebrationDismissed by remember { mutableStateOf(false) }
+    // Re-arm the celebration whenever the deck drops back to incomplete, so re-completing
+    // (e.g. after a reset or refresh) celebrates again instead of only once per screen.
+    LaunchedEffect(state?.isComplete) {
+        if (state?.isComplete == false) celebrationDismissed = false
+    }
 
     state?.let { pull ->
         PullScreen(
@@ -133,7 +140,7 @@ fun PullScreen(
                             Icon(Icons.Filled.RestartAlt, contentDescription = "Reset progress")
                         }
                         IconButton(onClick = onAddDeck) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Add another deck")
+                            Icon(Icons.Filled.Add, contentDescription = "Add another deck")
                         }
                     }
                 },
