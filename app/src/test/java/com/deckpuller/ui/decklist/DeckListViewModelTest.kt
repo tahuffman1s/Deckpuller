@@ -62,6 +62,22 @@ class DeckListViewModelTest {
     }
 
     @Test
+    fun `commander image is taken from the card categorized as Commander`() = runTest {
+        val dwc = DeckWithCards(
+            deck = DeckEntity(id = 1, name = "EDH", archidektId = "1", sourceUrl = "u", importedAt = 1),
+            cards = listOf(
+                CardEntity(id = 10, deckId = 1, scryfallId = "s0", name = "Sol Ring",
+                    typeLine = "Artifact", category = "Ramp", imageUrl = "ramp.jpg", requiredQty = 1, pulledQty = 0),
+                CardEntity(id = 11, deckId = 1, scryfallId = "s1", name = "Krenko",
+                    typeLine = "Creature", category = "Commander", imageUrl = "krenko.jpg", requiredQty = 1, pulledQty = 0),
+            ),
+        )
+        DeckListViewModel(FakeRepo(listOf(dwc))).items.test {
+            assertEquals("krenko.jpg", awaitItem()[0].commanderImageUrl)
+        }
+    }
+
+    @Test
     fun `delete delegates to repository`() = runTest {
         val repo = FakeRepo(emptyList())
         DeckListViewModel(repo).delete(42L)

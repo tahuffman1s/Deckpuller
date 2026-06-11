@@ -44,6 +44,22 @@ class DeckListScreenTest {
     }
 
     @Test
+    fun `overflow menu delete fires callback`() {
+        var deleted: Long? = null
+        rule.setContent {
+            DeckListScreen(
+                decks = listOf(DeckListItem(id = 5, name = "Goblins", pulled = 2, total = 10)),
+                onDeckClick = {},
+                onAddDeck = {},
+                onDeleteDeck = { deleted = it },
+            )
+        }
+        rule.onNodeWithContentDescription("Options for Goblins").performClick()
+        rule.onNodeWithText("Delete").performClick()
+        assertEquals(5L, deleted)
+    }
+
+    @Test
     fun `settings action fires callback`() {
         var settings = false
         rule.setContent {
