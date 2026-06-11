@@ -59,16 +59,25 @@ class PullViewModelTest {
     }
 
     @Test
-    fun `search filters groups but totals stay full`() = runTest {
+    fun `search filters cards but totals stay full`() = runTest {
         val deck = Deck("D", listOf(card("Forest", 4, 1), card("Sol Ring", 1, 0)))
         val model = vm(FakeRepo(deck))
         model.onSearchChange("sol")
         model.state.test {
             val s = awaitItem()!!
             assertEquals(5, s.total)
-            val names = s.groups.flatMap { it.cards }.map { it.name }
+            val names = s.cards.map { it.name }
             assertEquals(listOf("Sol Ring"), names)
             assertEquals("sol", s.searchQuery)
+        }
+    }
+
+    @Test
+    fun `cards are returned as one flat alphabetical list`() = runTest {
+        val deck = Deck("D", listOf(card("Sol Ring", 1, 0), card("Anger", 1, 0), card("forest", 1, 0)))
+        vm(FakeRepo(deck)).state.test {
+            val s = awaitItem()!!
+            assertEquals(listOf("Anger", "forest", "Sol Ring"), s.cards.map { it.name })
         }
     }
 

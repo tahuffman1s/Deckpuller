@@ -6,7 +6,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import com.deckpuller.domain.DeckGrouping
 import com.deckpuller.domain.model.DeckCard
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -28,7 +27,8 @@ class PullScreenTest {
 
     private fun state(query: String = "", cards: List<DeckCard>) = PullUiState(
         deckName = "My Deck",
-        groups = DeckGrouping.group(if (query.isBlank()) cards else cards.filter { it.name.contains(query, true) }),
+        cards = (if (query.isBlank()) cards else cards.filter { it.name.contains(query, true) })
+            .sortedBy { it.name.lowercase() },
         pulled = 0, total = cards.size, searchQuery = query,
     )
 

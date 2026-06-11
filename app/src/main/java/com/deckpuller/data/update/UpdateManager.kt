@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import com.deckpuller.data.remote.GitHubApi
 import com.deckpuller.domain.VersionComparator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -35,27 +34,48 @@ data class UpdateInfo(
  */
 @Singleton
 class UpdateManager @Inject constructor(
-    private val gitHubApi: GitHubApi,
     private val okHttpClient: OkHttpClient,
     @ApplicationContext private val context: Context,
 ) {
+    // A client that surfaces (rather than follows) GitHub's redirect, so we can read the
+    // latest tag from the Location header.
+    private val redirectReader: OkHttpClient by lazy {
+        okHttpClient.newBuilder().followRedirects(false).build()
+    }
+
     val currentVersionName: String
         get() = runCatching {
             @Suppress("DEPRECATION")
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull() ?: "0"
 
-    /** Returns info about a newer release, or null if up to date / unavailable. */
-    suspend fun checkForUpdate(): UpdateInfo? {
-        val release = gitHubApi.latestRelease(OWNER, REPO)
-        if (release.draft || release.prerelease) return null
-        val apk = release.apkAsset() ?: return null
-        if (!VersionComparator.isNewer(release.tagName, currentVersionName)) return null
-        return UpdateInfo(
-            versionName = release.tagName.removePrefix("v"),
-            apkUrl = apk.downloadUrl,
-            apkSizeBytes = apk.size,
-            notes = release.body?.trim().orEmpty(),
+    /**
+     * Returns info about a newer release, or null if up to date / unavailable.
+     *
+     * GitHub's REST API (api.github.com) allows only 60 unauthenticated requests per
+     * hour *per source IP*. On carrier-grade NAT many phones share one address, so that
+     * budget is routinely exhausted and the API returns HTTP 403. We instead hit the
+     * releases/latest *web* endpoint, which isn't rate-limited and 302-redirects to
+     * .../releases/tag/<tag>; the tag gives us the version and the deterministic APK URL.
+     */
+    suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://github.com/$OWNER/$REPO/releases/latest")
+            .build()
+        val tag = redirectReader.newCall(request).execute().use { response ->
+            response.header("Location")
+                ?.substringAfterLast("/tag/", "")
+                ?.takeIf { it.isNotBlank() }
+        } ?: return@withContext null
+
+        if (!VersionComparator.isNewer(tag, currentVersionName)) return@withContext null
+        val version = tag.removePrefix("v")
+        UpdateInfo(
+            versionName = version,
+            // CI publishes the APK under a stable name (see .github/workflows release job).
+            apkUrl = "https://github.com/$OWNER/$REPO/releases/download/$tag/DeckPuller-$version.apk",
+            apkSizeBytes = 0L, // Unknown ahead of time; download reports progress via Content-Length.
+            notes = "",
         )
     }
 

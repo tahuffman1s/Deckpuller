@@ -1,6 +1,5 @@
 package com.deckpuller.ui.pull
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -99,7 +98,7 @@ fun PullRoute(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PullScreen(
     state: PullUiState,
@@ -131,7 +130,7 @@ fun PullScreen(
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val alphabetIndex = remember(state.groups) { buildAlphabetIndex(state.groups) }
+    val alphabetIndex = remember(state.cards) { buildAlphabetIndex(state.cards) }
 
     Scaffold(
         modifier = modifier,
@@ -197,25 +196,14 @@ fun PullScreen(
                         // Clear the speed-dial FAB so the last card stays tappable.
                         contentPadding = PaddingValues(bottom = 96.dp),
                     ) {
-                        state.groups.forEach { group ->
-                            stickyHeader(key = "header-${group.type}") {
-                                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = "${group.type} (${group.cards.size})",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                                    )
-                                }
-                            }
-                            items(group.cards, key = { it.id }) { card ->
-                                CardRow(
-                                    card = card,
-                                    onIncrement = onIncrement,
-                                    onDecrement = onDecrement,
-                                    onImageClick = { zoomedCard = it },
-                                )
-                                HorizontalDivider()
-                            }
+                        items(state.cards, key = { it.id }) { card ->
+                            CardRow(
+                                card = card,
+                                onIncrement = onIncrement,
+                                onDecrement = onDecrement,
+                                onImageClick = { zoomedCard = it },
+                            )
+                            HorizontalDivider()
                         }
                     }
                     if (alphabetIndex.isNotEmpty()) {

@@ -1,6 +1,5 @@
 package com.deckpuller.ui.pull
 
-import com.deckpuller.domain.model.CardGroup
 import com.deckpuller.domain.model.DeckCard
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -13,25 +12,21 @@ class AlphabetIndexTest {
     )
 
     @Test
-    fun `maps first letters to lazy indices accounting for sticky headers`() {
-        val groups = listOf(
-            CardGroup("Creature", listOf(card("Anger"), card("Battle Squadron"))),
-            CardGroup("Land", listOf(card("Forest"))),
-        )
+    fun `maps first letters to their position in the flat list`() {
+        val cards = listOf(card("Anger"), card("Battle Squadron"), card("Forest"))
 
-        val index = buildAlphabetIndex(groups)
+        val index = buildAlphabetIndex(cards)
 
-        // header=0, Anger=1, Battle=2, header=3, Forest=4
-        assertEquals(1, index['A'])
-        assertEquals(2, index['B'])
-        assertEquals(4, index['F'])
+        // Anger=0, Battle=1, Forest=2
+        assertEquals(0, index['A'])
+        assertEquals(1, index['B'])
+        assertEquals(2, index['F'])
         assertEquals(null, index['C'])
     }
 
     @Test
     fun `non-letter initials collapse to hash`() {
-        val groups = listOf(CardGroup("Token", listOf(card("9th Sphere"))))
-        val index = buildAlphabetIndex(groups)
-        assertEquals(1, index['#'])
+        val index = buildAlphabetIndex(listOf(card("9th Sphere")))
+        assertEquals(0, index['#'])
     }
 }
