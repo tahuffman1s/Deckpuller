@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deckpuller.data.update.UpdateInfo
 import com.deckpuller.ui.update.UpdateStatus
 import com.deckpuller.ui.update.UpdateViewModel
+
+private const val GITHUB_URL = "https://github.com/tahuffman1s/Deckpuller"
 
 @Composable
 fun SettingsRoute(
@@ -92,6 +96,22 @@ fun SettingsScreen(
                     Text("About", style = MaterialTheme.typography.titleMedium)
                     LabeledValue(label = "App", value = "DeckPuller")
                     LabeledValue(label = "Version", value = currentVersion)
+                    LabeledValue(label = "Author", value = "Travis Huffman")
+                    val uriHandler = LocalUriHandler.current
+                    OutlinedButton(
+                        onClick = { uriHandler.openUri(GITHUB_URL) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            Icons.Filled.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            "View on GitHub",
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
                 }
             }
 
