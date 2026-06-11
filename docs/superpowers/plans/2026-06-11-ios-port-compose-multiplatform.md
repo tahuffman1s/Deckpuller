@@ -19,11 +19,11 @@ Resolved real versions (knowledge cutoff was behind): **Kotlin 2.2.20 · CMP 1.9
 - [x] Task 2.1 — Hilt→Koin (`di/AppModule.kt`; `koinViewModel()`; startKoin guarded for Robolectric) + stack modernization
 - [x] Phase 1 (Tasks 1.2–1.5) — split `:app` → `:shared` (KMP android-library, android target only) + `:androidApp` launcher
 - [x] Task 2.2 — Retrofit/OkHttp → Ktor 3.5.0 (APIs now concrete classes over HttpClient; tests use Ktor MockEngine). okhttp kept for UpdateManager's release download.
+- [x] Task 2.3 — Room → Room KMP 2.8.4 (bundled driver, `@ConstructedBy` + KSP-generated constructor, migrations on `SQLiteConnection`). **DB layer (AppDatabase/DAOs/entities) is now in `commonMain`** — first commonMain code. db name + migrations preserved. Required `ksp.useKSP2=true`, serialization→1.8.1, exportSchema=true. Tests use `AndroidSQLiteDriver` (bundled native lib won't load under Robolectric); prod uses `BundledSQLiteDriver`.
+- [x] Task 2.4 — DataStore → datastore-preferences-core (KMP). **`UserPreferences` now in `commonMain`** (takes `DataStore<Preferences>`); Koin supplies the android path `<filesDir>/datastore/user_prefs.preferences_pb` (byte-identical to old default).
+- [x] Task 2.5 — Coil 2 → Coil 3.5.0 (+ coil-network-ktor3 over the existing Ktor client; `SingletonImageLoader.setSafe`). All AsyncImage sites + `loadCardBitmap` ported. Forced `kotlin-stdlib`→2.2.20 (Coil pins 2.4.0, unreadable by the compiler).
 
 **REMAINING on Linux (files still in `androidMain`):**
-- [ ] Task 2.3 — Room → Room KMP (2.8.4, bundled SQLite driver, `RoomDatabaseConstructor`/`expect`-builder). PRESERVE db name `deckpuller.db` + MIGRATION_2_3/3_4.
-- [ ] Task 2.4 — DataStore → datastore-preferences-core (KMP); keep file name `user_prefs`.
-- [ ] Task 2.5 — Coil 2 → Coil 3.5.0 (all AsyncImage sites + `CardBitmap.loadCardBitmap`).
 - [ ] Task 2.6 — konfetti → custom Compose confetti.
 - [ ] Task 2.7 — navigation-compose → JetBrains KMP nav fork.
 - [ ] **commonMain promotion + apply `compose-multiplatform` plugin** (drop the androidx compose-BOM in `:shared`, switch to `compose.*` deps, move platform-free UI/data/domain to `commonMain`). HIGHEST RISK — best done as one focused step, ideally alongside iOS-target setup. This subsumes plan Task 1.3's intent.
