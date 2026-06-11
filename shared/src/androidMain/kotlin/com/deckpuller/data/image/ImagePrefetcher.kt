@@ -1,8 +1,8 @@
 package com.deckpuller.data.image
 
 import android.content.Context
-import coil.ImageLoader
-import coil.request.ImageRequest
+import coil3.ImageLoader
+import coil3.request.ImageRequest
 
 /** Warms an image cache so cards display offline after import. */
 fun interface ImagePrefetcher {

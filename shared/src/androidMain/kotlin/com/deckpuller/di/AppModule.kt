@@ -2,7 +2,8 @@ package com.deckpuller.di
 
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import coil.ImageLoader
+import coil3.ImageLoader
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.image.CoilImagePrefetcher
 import com.deckpuller.data.image.ImagePrefetcher
@@ -78,7 +79,11 @@ val appModule = module {
     single { get<AppDatabase>().deckDao() }
     single { get<AppDatabase>().collectionDao() }
 
-    single { ImageLoader(androidContext()) }
+    single {
+        ImageLoader.Builder(androidContext())
+            .components { add(KtorNetworkFetcherFactory(get<HttpClient>())) }
+            .build()
+    }
 
     single {
         UserPreferences(

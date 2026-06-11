@@ -52,6 +52,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
 
             implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
             implementation(libs.konfetti.compose)
         }
         androidUnitTest.dependencies {
@@ -75,6 +76,20 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.room.compiler)
     add("kspCommonMainMetadata", libs.room.compiler)
+}
+
+// Coil 3.5.0 (via coil-core-android) constrains kotlin-stdlib to 2.4.0, whose metadata
+// version the project's Kotlin 2.2.20 compiler cannot read ("can read versions up to 2.3.0").
+// Strictly pin the stdlib (and friends) back to the Kotlin Gradle plugin version so the whole
+// graph stays on a compatible metadata version.
+configurations.configureEach {
+    resolutionStrategy {
+        force(
+            "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${libs.versions.kotlin.get()}",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${libs.versions.kotlin.get()}",
+        )
+    }
 }
 
 android {

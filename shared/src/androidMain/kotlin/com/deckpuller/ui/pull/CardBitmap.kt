@@ -1,12 +1,14 @@
 package com.deckpuller.ui.pull
 
 import android.content.Context
-import android.graphics.drawable.BitmapDrawable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.size.Scale
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.size.Scale
+import coil3.toBitmap
 
 /**
  * Load [url] as a software [ImageBitmap] (returns null on any failure). Hardware bitmaps
@@ -24,5 +26,6 @@ suspend fun Context.loadCardBitmap(url: String, targetHeightPx: Int? = null): Im
         builder.size((targetHeightPx * 0.716f).toInt().coerceAtLeast(1), targetHeightPx).scale(Scale.FIT)
     }
     val result = imageLoader.execute(builder.build())
-    return (result.drawable as? BitmapDrawable)?.bitmap?.asImageBitmap()
+    val image = (result as? SuccessResult)?.image ?: return null
+    return image.toBitmap().asImageBitmap()
 }

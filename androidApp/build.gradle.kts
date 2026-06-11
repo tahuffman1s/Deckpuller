@@ -62,6 +62,18 @@ kotlin {
     }
 }
 
+// Coil 3.5.0 transitively constrains kotlin-stdlib to 2.4.0, whose metadata version the
+// project's Kotlin 2.2.20 compiler cannot read. Strictly pin it back to the plugin version.
+configurations.configureEach {
+    resolutionStrategy {
+        force(
+            "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${libs.versions.kotlin.get()}",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${libs.versions.kotlin.get()}",
+        )
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
@@ -75,4 +87,6 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
+    // Needed to set Coil 3's singleton ImageLoader from the Koin-provided, Ktor-backed loader.
+    implementation(libs.coil.compose)
 }

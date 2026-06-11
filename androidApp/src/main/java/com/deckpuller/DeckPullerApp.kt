@@ -1,6 +1,8 @@
 package com.deckpuller
 
 import android.app.Application
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import com.deckpuller.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -19,5 +21,8 @@ class DeckPullerApp : Application() {
                 modules(appModule)
             }
         }
+        // Make every AsyncImage / prefetch share the Koin-provided, Ktor-backed ImageLoader.
+        // setSafe won't overwrite an already-set loader (e.g. when Robolectric reuses the JVM).
+        SingletonImageLoader.setSafe { GlobalContext.get().get<ImageLoader>() }
     }
 }
