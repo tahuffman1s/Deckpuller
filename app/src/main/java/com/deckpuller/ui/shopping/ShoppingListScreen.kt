@@ -3,7 +3,6 @@ package com.deckpuller.ui.shopping
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,8 +52,7 @@ import com.deckpuller.ui.common.CardThumbnail
 import com.deckpuller.ui.common.SpeedDialAction
 import com.deckpuller.ui.common.SpeedDialFab
 import com.deckpuller.ui.common.scryfallImageUrl
-import com.deckpuller.ui.pull.AlphabetRail
-import com.deckpuller.ui.pull.buildAlphabetIndexFromNames
+import com.deckpuller.ui.pull.AlphabetIndexedColumn
 import kotlinx.coroutines.launch
 
 @Composable
@@ -112,10 +110,6 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
         ),
     ) else emptyList()
 
-    val alphabetIndex = remember(state?.items) {
-        buildAlphabetIndexFromNames(state?.items.orEmpty().map { it.name })
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -146,22 +140,6 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                         }
                     }
                 },
-                actions = {
-                    if (hasItems) {
-                        IconButton(onClick = { open(StoreCartLinks.tcgPlayerUrl(items)) }) {
-                            StoreIcon(R.drawable.ic_tcgplayer, "Buy on TCGplayer")
-                        }
-                        IconButton(onClick = {
-                            clipboard.setText(AnnotatedString(StoreCartLinks.clipboardText(items)))
-                            open(StoreCartLinks.cardKingdomUrl(items))
-                        }) {
-                            StoreIcon(R.drawable.ic_cardkingdom, "Buy on Card Kingdom")
-                        }
-                        IconButton(onClick = ::copy) {
-                            Icon(Icons.Filled.ContentCopy, contentDescription = "Copy card list")
-                        }
-                    }
-                },
             )
         },
     ) { padding ->
@@ -175,24 +153,17 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                     Text("Nothing to buy — you own everything in this deck (or no collection imported).")
                 }
             } else {
-                Row(Modifier.fillMaxSize()) {
-                    if (alphabetIndex.isNotEmpty()) {
-                        AlphabetRail(
-                            enabled = alphabetIndex.keys,
-                            onSelect = { letter ->
-                                alphabetIndex[letter]?.let { index ->
-                                    scope.launch { listState.scrollToItem(index) }
-                                }
-                            },
-                            modifier = Modifier.padding(vertical = 8.dp),
-                        )
-                    }
+                AlphabetIndexedColumn(
+                    names = state!!.items.map { it.name },
+                    listState = listState,
+                    modifier = Modifier.fillMaxSize(),
+                ) { listModifier ->
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        modifier = listModifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 96.dp),
                     ) {
-                        items(state!!.items, key = { "${it.scryfallId}|${it.name}" }) { item ->
+                        items(state.items, key = { "${it.scryfallId}|${it.name}" }) { item ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -235,10 +206,10 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     }
 }
 
-/** A store brand logo sized to sit in a top-bar IconButton or speed-dial mini-FAB. */
+/** A monochrome store mark, tinted to the speed-dial mini-FAB's content colour. */
 @Composable
 private fun StoreIcon(resId: Int, description: String) {
-    Image(
+    Icon(
         painter = painterResource(resId),
         contentDescription = description,
         modifier = Modifier.size(24.dp),

@@ -33,7 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +50,7 @@ import com.deckpuller.ui.common.CompactSearchField
 import com.deckpuller.ui.common.SpeedDialAction
 import com.deckpuller.ui.common.SpeedDialFab
 import com.deckpuller.ui.common.scryfallImageUrl
-import com.deckpuller.ui.pull.AlphabetRail
-import com.deckpuller.ui.pull.buildAlphabetIndexFromNames
-import kotlinx.coroutines.launch
+import com.deckpuller.ui.pull.AlphabetIndexedColumn
 import java.text.DateFormat
 import java.util.Date
 
@@ -88,7 +85,6 @@ fun CollectionScreen(
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -114,7 +110,6 @@ fun CollectionScreen(
     }
 
     val hasCollection = state.totalCount > 0
-    val alphabetIndex = remember(state.cards) { buildAlphabetIndexFromNames(state.cards.map { it.name }) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -192,21 +187,14 @@ fun CollectionScreen(
                     )
                 }
             } else {
-                Row(Modifier.fillMaxSize()) {
-                    if (alphabetIndex.isNotEmpty()) {
-                        AlphabetRail(
-                            enabled = alphabetIndex.keys,
-                            onSelect = { letter ->
-                                alphabetIndex[letter]?.let { index ->
-                                    scope.launch { listState.scrollToItem(index) }
-                                }
-                            },
-                            modifier = Modifier.padding(vertical = 8.dp),
-                        )
-                    }
+                AlphabetIndexedColumn(
+                    names = state.cards.map { it.name },
+                    listState = listState,
+                    modifier = Modifier.fillMaxSize(),
+                ) { listModifier ->
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        modifier = listModifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 96.dp),
                     ) {
                         items(state.cards, key = { it.id }) { card ->
