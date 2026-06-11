@@ -13,6 +13,7 @@ data class DeckCard(
     val imageUrl: String?,
     val requiredQty: Int,
     val pulledQty: Int,
+    val category: String = "",
 ) {
     val isComplete: Boolean get() = pulledQty >= requiredQty
 }

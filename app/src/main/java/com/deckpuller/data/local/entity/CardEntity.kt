@@ -23,6 +23,8 @@ data class CardEntity(
     val scryfallId: String,
     val name: String,
     val typeLine: String,
+    /** Archidekt deck category (e.g. "Removal"); empty when uncategorized. */
+    val category: String = "",
     val imageUrl: String?,
     val requiredQty: Int,
     val pulledQty: Int,

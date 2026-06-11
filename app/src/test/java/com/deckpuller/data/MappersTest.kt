@@ -15,7 +15,7 @@ class MappersTest {
             cards = listOf(
                 CardEntity(
                     id = 7L, deckId = 1L, scryfallId = "uid-1", name = "Forest",
-                    typeLine = "Basic Land — Forest", imageUrl = "f.jpg",
+                    typeLine = "Basic Land — Forest", category = "Ramp", imageUrl = "f.jpg",
                     requiredQty = 4, pulledQty = 2,
                 ),
             ),
@@ -32,5 +32,6 @@ class MappersTest {
         assertEquals("f.jpg", card.imageUrl)
         assertEquals(4, card.requiredQty)
         assertEquals(2, card.pulledQty)
+        assertEquals("Ramp", card.category)
     }
 }

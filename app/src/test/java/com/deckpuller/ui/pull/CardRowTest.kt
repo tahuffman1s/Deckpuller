@@ -18,10 +18,18 @@ class CardRowTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun card(pulled: Int, required: Int) = DeckCard(
+    private fun card(pulled: Int, required: Int, category: String = "") = DeckCard(
         id = 1, scryfallId = "uid", name = "Sol Ring", typeLine = "Artifact",
-        imageUrl = null, requiredQty = required, pulledQty = pulled,
+        imageUrl = null, requiredQty = required, pulledQty = pulled, category = category,
     )
+
+    @Test
+    fun `shows the archidekt category instead of the type line`() {
+        rule.setContent {
+            CardRow(card(pulled = 0, required = 1, category = "Ramp"), onIncrement = {}, onDecrement = {})
+        }
+        rule.onNodeWithText("Ramp").assertExists()
+    }
 
     @Test
     fun `tapping the row increments`() {

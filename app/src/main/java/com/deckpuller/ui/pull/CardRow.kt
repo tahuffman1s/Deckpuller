@@ -69,9 +69,10 @@ fun CardRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (card.typeLine.isNotBlank() && card.typeLine != "Unknown") {
+            val subtitle = card.category.ifBlank { card.typeLine }
+            if (subtitle.isNotBlank() && subtitle != "Unknown") {
                 Text(
-                    text = card.typeLine,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
