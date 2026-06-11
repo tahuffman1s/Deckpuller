@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -44,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import kotlinx.coroutines.launch
 
 @Composable
 fun PullRoute(
@@ -125,6 +129,10 @@ fun PullScreen(
         }
     }
 
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val alphabetIndex = remember(state.groups) { buildAlphabetIndex(state.groups) }
+
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
@@ -182,30 +190,44 @@ fun PullScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
                 PullHeader(pulled = state.pulled, total = state.total, isRefreshing = isRefreshing)
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    // Clear the speed-dial FAB so the last card stays tappable.
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                ) {
-                    state.groups.forEach { group ->
-                        stickyHeader(key = "header-${group.type}") {
-                            Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "${group.type} (${group.cards.size})",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        // Clear the speed-dial FAB so the last card stays tappable.
+                        contentPadding = PaddingValues(bottom = 96.dp),
+                    ) {
+                        state.groups.forEach { group ->
+                            stickyHeader(key = "header-${group.type}") {
+                                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = "${group.type} (${group.cards.size})",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                    )
+                                }
+                            }
+                            items(group.cards, key = { it.id }) { card ->
+                                CardRow(
+                                    card = card,
+                                    onIncrement = onIncrement,
+                                    onDecrement = onDecrement,
+                                    onImageClick = { zoomedCard = it },
                                 )
+                                HorizontalDivider()
                             }
                         }
-                        items(group.cards, key = { it.id }) { card ->
-                            CardRow(
-                                card = card,
-                                onIncrement = onIncrement,
-                                onDecrement = onDecrement,
-                                onImageClick = { zoomedCard = it },
-                            )
-                            HorizontalDivider()
-                        }
+                    }
+                    if (alphabetIndex.isNotEmpty()) {
+                        AlphabetRail(
+                            enabled = alphabetIndex.keys,
+                            onSelect = { letter ->
+                                alphabetIndex[letter]?.let { index ->
+                                    scope.launch { listState.scrollToItem(index) }
+                                }
+                            },
+                            modifier = Modifier.padding(top = 4.dp, bottom = 96.dp),
+                        )
                     }
                 }
             }

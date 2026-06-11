@@ -2,6 +2,9 @@ package com.deckpuller.ui.pull
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,11 +18,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -29,6 +36,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+
+private const val HOLD_DELAY_MS = 350L
+private const val HOLD_REPEAT_MS = 140L
 
 @Composable
 fun CardRow(
@@ -38,10 +51,32 @@ fun CardRow(
     onImageClick: (DeckCard) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // Read the latest card/callback inside the long-running gesture coroutine so a
+    // press-and-hold keeps incrementing from the current count, not a stale snapshot.
+    val currentCard by rememberUpdatedState(card)
+    val incrementNow by rememberUpdatedState(onIncrement)
+    val scope = rememberCoroutineScope()
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onIncrement(card) }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = true)
+                    var repeated = false
+                    val holdJob = scope.launch {
+                        delay(HOLD_DELAY_MS)
+                        repeated = true
+                        while (isActive) {
+                            incrementNow(currentCard)
+                            delay(HOLD_REPEAT_MS)
+                        }
+                    }
+                    val up = waitForUpOrCancellation()
+                    holdJob.cancel()
+                    if (up != null && !repeated) incrementNow(currentCard)
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .alpha(if (card.isComplete) 0.5f else 1f),
         verticalAlignment = Alignment.CenterVertically,

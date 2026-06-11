@@ -16,6 +16,7 @@ data class DeckListItem(
     val name: String,
     val pulled: Int,
     val total: Int,
+    val commanderImageUrl: String? = null,
 )
 
 @HiltViewModel
@@ -27,11 +28,15 @@ class DeckListViewModel @Inject constructor(
         repository.observeDecks()
             .map { decks ->
                 decks.map { dwc ->
+                    val commander = dwc.cards.firstOrNull {
+                        it.category.contains("Commander", ignoreCase = true)
+                    }
                     DeckListItem(
                         id = dwc.deck.id,
                         name = dwc.deck.name,
                         pulled = dwc.cards.sumOf { it.pulledQty },
                         total = dwc.cards.sumOf { it.requiredQty },
+                        commanderImageUrl = commander?.imageUrl,
                     )
                 }
             }
