@@ -56,24 +56,26 @@ Building a physical MTG deck from a list is tedious — you scan a decklist, hun
 - **📚 Multiple decks** — keep as many decks as you like, each with its own saved pull progress.
 - **🔗 Import from Archidekt** — paste a deck URL, or enter your Archidekt username and pick from your public decks (the username is remembered).
 - **🖼️ Real card images** — fetched and cached from Scryfall; tap any card to see it full-size.
-- **🔤 Flat A–Z list** — one alphabetical list of every card, with a Niagara-style fisheye letter rail for fast scrolling.
-- **🔎 Search** — filter the current deck by card name; the keyboard pops up the moment you open it.
-- **🔄 Refresh** — re-sync a deck from Archidekt **without losing your pulled progress**.
+- **🔤 Flat A–Z list** — one alphabetical list of every card, with a Niagara-style fisheye letter rail (and a floating letter bubble that tracks your thumb) for fast scrolling.
+- **➕ Tap or hold** — tap a card or its `+` to pull one; press-and-hold `+`/`−` to repeat. Each card shows a progress meter instead of a raw count.
+- **🔎 Search** — the search button in the top bar filters the deck by card name; the keyboard pops up instantly.
+- **🗂️ Filter by category** — narrow the list to a single subtitle (Archidekt category / type) from the speed dial.
+- **🔄 Pull-to-refresh** — drag down to re-sync a deck from Archidekt **without losing your pulled progress**.
 - **♻️ Reset** — zero-out a deck's progress (with a confirmation), ready for the next build.
 - **💾 Offline-friendly progress** — pull counts live in a local database and survive restarts.
 - **🎉 Completion celebration** — confetti when a deck hits 100%.
-- **🌙 Modern Material 3 UI** — edge-to-edge, dark-theme-first, with a speed-dial action button.
+- **🌙 Modern Material 3 UI** — edge-to-edge, dark-theme-first, with a left-anchored speed-dial action button.
 - **⬆️ In-app auto-update** — checks GitHub Releases on launch (via the rate-limit-free `releases/latest` redirect) and installs new versions for you ([details](docs/AUTO_UPDATE.md)).
 
 ## 🧭 How pulling works
 
 1. **Add a deck** from the deck list (the `+` button) — by URL or by browsing your Archidekt username.
 2. DeckPuller fetches the decklist from Archidekt and enriches each card with art/type data from Scryfall.
-3. On the **pull screen**, tap a card row to increment its pulled count; use the `−` button to back one out.
-4. The header shows overall `pulled / total` and a percentage; each card shows `pulled / required`.
+3. On the **pull screen**, tap a card row (or its `+`) to increment its pulled count; hold `+`/`−` to repeat, and the `−` to back one out.
+4. The condensed top bar shows the deck name with overall `pulled / total · %`, plus a slim progress bar; each card has its own progress meter.
 5. Pull everything and enjoy the confetti — the deck stays in your list at 100% for next time.
 
-The bottom-right **speed-dial** holds Search, Refresh, Reset, and Add-deck so the card list stays clean.
+The **search** button sits in the top bar, **pull-to-refresh** re-syncs the deck, and the left-anchored **speed-dial** holds Filter and Reset so the card list stays clean.
 
 ## 🏗️ Architecture & tech stack
 

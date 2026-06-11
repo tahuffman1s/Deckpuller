@@ -67,10 +67,18 @@ class CardRowTest {
     }
 
     @Test
-    fun `shows pulled over required count`() {
+    fun `shows a progress meter for pulled over required`() {
         rule.setContent {
             CardRow(card(pulled = 2, required = 4), onIncrement = {}, onDecrement = {})
         }
-        rule.onNodeWithText("2/4").assertExists()
+        rule.onNodeWithContentDescription("2 of 4 pulled").assertExists()
+    }
+
+    @Test
+    fun `increment button is disabled when complete`() {
+        rule.setContent {
+            CardRow(card(pulled = 4, required = 4), onIncrement = {}, onDecrement = {})
+        }
+        rule.onNodeWithContentDescription("Increment Sol Ring").assertIsNotEnabled()
     }
 }

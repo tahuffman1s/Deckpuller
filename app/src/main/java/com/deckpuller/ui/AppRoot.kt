@@ -78,7 +78,6 @@ fun AppRoot() {
         ) {
             PullRoute(
                 onBack = { navController.popBackStack() },
-                onAddDeck = { navController.navigate(ADD_DECK) },
             )
         }
     }

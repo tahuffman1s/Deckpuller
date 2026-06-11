@@ -39,8 +39,8 @@ class PullScreenTest {
             PullScreen(
                 state = state(cards = listOf(card("Forest"))),
                 isRefreshing = false,
-                onIncrement = {}, onDecrement = {}, onSearchChange = {},
-                onRefresh = {}, onReset = { reset = true }, onBack = {}, onAddDeck = {},
+                onIncrement = {}, onDecrement = {}, onSearchChange = {}, onFilterChange = {},
+                onRefresh = {}, onReset = { reset = true }, onBack = {},
                 onCelebrationFinished = {},
             )
         }
@@ -57,14 +57,31 @@ class PullScreenTest {
             PullScreen(
                 state = state(cards = listOf(card("Forest"), card("Mountain"))),
                 isRefreshing = false,
-                onIncrement = {}, onDecrement = {}, onSearchChange = { typed = it },
-                onRefresh = {}, onReset = {}, onBack = {}, onAddDeck = {},
+                onIncrement = {}, onDecrement = {}, onSearchChange = { typed = it }, onFilterChange = {},
+                onRefresh = {}, onReset = {}, onBack = {},
+                onCelebrationFinished = {},
+            )
+        }
+        rule.onNodeWithContentDescription("Search").performClick() // search button in the top bar
+        rule.onNodeWithContentDescription("Search field").performTextInput("mount")
+        assertEquals("mount", typed)
+    }
+
+    @Test
+    fun `filter action lists subtitles and forwards the choice`() {
+        var filter: String? = "untouched"
+        rule.setContent {
+            PullScreen(
+                state = state(cards = listOf(card("Forest"))).copy(subtitles = listOf("Ramp", "Removal")),
+                isRefreshing = false,
+                onIncrement = {}, onDecrement = {}, onSearchChange = {}, onFilterChange = { filter = it },
+                onRefresh = {}, onReset = {}, onBack = {},
                 onCelebrationFinished = {},
             )
         }
         rule.onNodeWithContentDescription("Actions").performClick() // expand the speed-dial FAB
-        rule.onNodeWithContentDescription("Search").performClick()
-        rule.onNodeWithContentDescription("Search field").performTextInput("mount")
-        assertEquals("mount", typed)
+        rule.onNodeWithContentDescription("Filter").performClick()
+        rule.onNodeWithText("Ramp").performClick()
+        assertEquals("Ramp", filter)
     }
 }

@@ -29,6 +29,9 @@ import kotlin.math.abs
 /** A..Z shown by the fast-scroll rail. */
 val ALPHABET: List<Char> = ('A'..'Z').toList()
 
+/** Where the finger is on the rail mid-scrub: the touched letter and its 0..1 vertical fraction. */
+data class RailScrub(val letter: Char, val fraction: Float)
+
 /**
  * Maps each starting letter to the LazyColumn item index of the first card with
  * that initial, in display order. The list is now flat (no section headers), so
@@ -55,18 +58,18 @@ fun AlphabetRail(
     enabled: Set<Char>,
     onSelect: (Char) -> Unit,
     modifier: Modifier = Modifier,
-    onActiveLetterChange: (Char?) -> Unit = {},
+    onScrubChange: (RailScrub?) -> Unit = {},
 ) {
     val enabledState = rememberUpdatedState(enabled)
     val onSelectState = rememberUpdatedState(onSelect)
-    val onActiveLetterChangeState = rememberUpdatedState(onActiveLetterChange)
+    val onScrubChangeState = rememberUpdatedState(onScrubChange)
     // The index of the letter currently under the finger, or null when not dragging.
     var activeIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .width(32.dp)
+            .width(40.dp)
             .padding(end = 4.dp)
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -74,12 +77,14 @@ fun AlphabetRail(
                     fun handle(y: Float) {
                         val h = size.height
                         if (h <= 0) return
+                        val fraction = (y / h).coerceIn(0f, 1f)
                         val i = ((y / h) * ALPHABET.size).toInt().coerceIn(0, ALPHABET.lastIndex)
                         activeIndex = i
                         val c = ALPHABET[i]
+                        // Report every move so the floating bubble can track the thumb.
+                        onScrubChangeState.value(RailScrub(c, fraction))
                         if (c != last) {
                             last = c
-                            onActiveLetterChangeState.value(c)
                             if (c in enabledState.value) onSelectState.value(c)
                         }
                     }
@@ -94,7 +99,7 @@ fun AlphabetRail(
                         change.consume()
                     }
                     activeIndex = null
-                    onActiveLetterChangeState.value(null)
+                    onScrubChangeState.value(null)
                 }
             },
         verticalArrangement = Arrangement.SpaceEvenly,
@@ -127,7 +132,7 @@ fun AlphabetRail(
 
             Text(
                 text = letter.toString(),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = if (active || focused) FontWeight.Bold else FontWeight.Normal,
                 color = when {
                     focused -> MaterialTheme.colorScheme.primary

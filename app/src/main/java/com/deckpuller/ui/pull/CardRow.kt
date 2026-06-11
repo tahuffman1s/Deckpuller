@@ -6,14 +6,20 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,10 +34,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -52,7 +60,7 @@ fun CardRow(
     modifier: Modifier = Modifier,
 ) {
     // Read the latest card/callback inside the long-running gesture coroutine so a
-    // press-and-hold keeps incrementing from the current count, not a stale snapshot.
+    // press-and-hold keeps (de)incrementing from the current count, not a stale snapshot.
     val currentCard by rememberUpdatedState(card)
     val incrementNow by rememberUpdatedState(onIncrement)
     val scope = rememberCoroutineScope()
@@ -80,7 +88,7 @@ fun CardRow(
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .alpha(if (card.isComplete) 0.5f else 1f),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val thumbnailPlaceholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
         AsyncImage(
@@ -101,10 +109,10 @@ fun CardRow(
                 text = card.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (card.isComplete) FontWeight.Normal else FontWeight.SemiBold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val subtitle = card.category.ifBlank { card.typeLine }
+            val subtitle = subtitleOf(card)
             if (subtitle.isNotBlank() && subtitle != "Unknown") {
                 Text(
                     text = subtitle,
@@ -114,29 +122,97 @@ fun CardRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-        FilledTonalIconButton(
-            onClick = { onDecrement(card) },
-            enabled = card.pulledQty > 0,
-            modifier = Modifier.semantics { contentDescription = "Decrement ${card.name}" },
-        ) {
-            Text("−", style = MaterialTheme.typography.titleLarge)
-        }
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = if (card.isComplete) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (card.isComplete) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSecondaryContainer,
-        ) {
-            Text(
-                text = "${card.pulledQty}/${card.requiredQty}",
-                style = MaterialTheme.typography.titleSmall,
-                textAlign = TextAlign.Center,
+            // Progress meter replaces the textual count.
+            LinearProgressIndicator(
+                progress = {
+                    if (card.requiredQty == 0) 0f
+                    else card.pulledQty.toFloat() / card.requiredQty
+                },
+                color = if (card.isComplete) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
-                    .widthIn(min = 44.dp)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .semantics {
+                        contentDescription = "${card.pulledQty} of ${card.requiredQty} pulled"
+                    },
             )
         }
+        // Hold − to repeat-decrement, hold + to repeat-increment (tap = one step).
+        HoldRepeatButton(
+            enabled = card.pulledQty > 0,
+            description = "Decrement ${card.name}",
+            onAction = { onDecrement(card) },
+        ) {
+            Icon(Icons.Filled.Remove, contentDescription = null)
+        }
+        HoldRepeatButton(
+            enabled = card.pulledQty < card.requiredQty,
+            description = "Increment ${card.name}",
+            onAction = { onIncrement(card) },
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null)
+        }
+    }
+}
+
+/**
+ * Circular tonal button that fires once on tap and repeats while held — the press is
+ * consumed so the row's own hold-to-increment gesture doesn't also fire.
+ */
+@Composable
+private fun HoldRepeatButton(
+    enabled: Boolean,
+    description: String,
+    onAction: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val actionNow by rememberUpdatedState(onAction)
+    val enabledNow by rememberUpdatedState(enabled)
+    val scope = rememberCoroutineScope()
+
+    Surface(
+        shape = CircleShape,
+        color = if (enabled) MaterialTheme.colorScheme.secondaryContainer
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+        contentColor = if (enabled) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        modifier = Modifier
+            .size(40.dp)
+            .semantics {
+                this.contentDescription = description
+                role = Role.Button
+                if (!enabled) disabled()
+            }
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = true)
+                            down.consume()
+                            var repeated = false
+                            val holdJob = scope.launch {
+                                delay(HOLD_DELAY_MS)
+                                repeated = true
+                                while (isActive) {
+                                    if (enabledNow) actionNow()
+                                    delay(HOLD_REPEAT_MS)
+                                }
+                            }
+                            val up = waitForUpOrCancellation()
+                            holdJob.cancel()
+                            up?.consume()
+                            if (up != null && !repeated) actionNow()
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        Box(contentAlignment = Alignment.Center) { content() }
     }
 }
