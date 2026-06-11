@@ -20,9 +20,14 @@ data class PullUiState(
     val pulled: Int,
     val total: Int,
     val searchQuery: String,
+    val subtitles: List<String> = emptyList(),
+    val activeFilter: String? = null,
 ) {
     val isComplete: Boolean get() = total > 0 && pulled == total
 }
+
+/** The label shown under a card (Archidekt category, falling back to its type line). */
+internal fun subtitleOf(card: DeckCard): String = card.category.ifBlank { card.typeLine }.trim()
 
 @HiltViewModel
 class PullViewModel @Inject constructor(
@@ -32,13 +37,17 @@ class PullViewModel @Inject constructor(
 
     private val deckId: Long = checkNotNull(savedStateHandle["deckId"])
     private val query = MutableStateFlow("")
+    private val filter = MutableStateFlow<String?>(null)
     val isRefreshing = MutableStateFlow(false)
 
     val state: StateFlow<PullUiState?> =
-        combine(repository.observeDeck(deckId), query) { deck, q ->
+        combine(repository.observeDeck(deckId), query, filter) { deck, q, f ->
             deck?.let {
-                val filtered = if (q.isBlank()) it.cards
-                    else it.cards.filter { card -> card.name.contains(q, ignoreCase = true) }
+                // Subtitle filter narrows first, then the name search, then alphabetise.
+                val byFilter = if (f == null) it.cards
+                    else it.cards.filter { card -> subtitleOf(card) == f }
+                val filtered = if (q.isBlank()) byFilter
+                    else byFilter.filter { card -> card.name.contains(q, ignoreCase = true) }
                 PullUiState(
                     deckName = it.name,
                     // One flat list, alphabetical by name (case-insensitive) — no type sections.
@@ -46,11 +55,18 @@ class PullViewModel @Inject constructor(
                     pulled = it.cards.sumOf { card -> card.pulledQty },
                     total = it.cards.sumOf { card -> card.requiredQty },
                     searchQuery = q,
+                    subtitles = it.cards.map(::subtitleOf)
+                        .filter { s -> s.isNotBlank() && s != "Unknown" }
+                        .distinct()
+                        .sorted(),
+                    activeFilter = f,
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun onSearchChange(value: String) { query.value = value }
+
+    fun onFilterChange(value: String?) { filter.value = value }
 
     fun increment(card: DeckCard) {
         if (card.pulledQty >= card.requiredQty) return
