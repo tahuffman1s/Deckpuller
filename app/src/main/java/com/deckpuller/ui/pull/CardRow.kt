@@ -120,6 +120,12 @@ fun CardRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val thumbnailPlaceholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+        // Owned-foil cards get a gentle holographic shimmer right in the list.
+        val foilShimmer = if (card.isFoil) {
+            Modifier.animatedFoilSheen(shape = RoundedCornerShape(8.dp), intensity = 0.5f)
+        } else {
+            Modifier
+        }
         AsyncImage(
             model = card.imageUrl,
             contentDescription = card.name,
@@ -132,6 +138,7 @@ fun CardRow(
                 .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(foilShimmer)
                 .clickable { onImageClick(card) },
         )
         Column(modifier = Modifier.weight(1f)) {

@@ -21,4 +21,7 @@ data class DeckCard(
 ) {
     val isComplete: Boolean get() = pulledQty >= requiredQty
     val isOwned: Boolean get() = ownedQty >= requiredQty
+
+    /** True when the user owns at least one foil (any non-"normal" finish) printing. */
+    val isFoil: Boolean get() = ownedPrintings.any { it.finish != "normal" }
 }

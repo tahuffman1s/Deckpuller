@@ -1,10 +1,21 @@
 package com.deckpuller.ui.pull
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +25,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,13 +81,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
@@ -85,6 +97,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -155,10 +168,8 @@ fun PullScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var zoomedCard by remember { mutableStateOf<DeckCard?>(null) }
-    // "Fly into the deck": the just-completed card in flight, and the commander art's
-    // root-space bounds it flies toward.
-    var flyingCard by remember { mutableStateOf<FlyingCard?>(null) }
-    var commanderBounds by remember { mutableStateOf(Rect.Zero) }
+    // The just-completed card, exploding into pieces where it sat in the list.
+    var shatteringCard by remember { mutableStateOf<ShatteringCard?>(null) }
 
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -259,7 +270,6 @@ fun PullScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(width = 30.dp, height = 42.dp)
-                                        .onGloballyPositioned { commanderBounds = it.boundsInRoot() }
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { zoomedCard = commander },
@@ -370,7 +380,7 @@ fun PullScreen(
                                         onImageClick = { zoomedCard = it },
                                         collectionPresent = state.collectionPresent,
                                         onCardCompleted = { c, bounds ->
-                                            flyingCard = FlyingCard(c.imageUrl, bounds)
+                                            shatteringCard = ShatteringCard(c.imageUrl, bounds)
                                         },
                                     )
                                 }
@@ -402,8 +412,8 @@ fun PullScreen(
             }
           }
 
-          flyingCard?.let { fc ->
-              FlyingCardOverlay(flying = fc, target = commanderBounds) { flyingCard = null }
+          shatteringCard?.let { shard ->
+              CardShatterOverlay(shard = shard) { shatteringCard = null }
           }
 
           if (showCelebration) {
@@ -648,12 +658,46 @@ private fun LetterBubble(letter: Char) {
     }
 }
 
+/** Standard Magic card aspect ratio (63mm × 88mm). */
+private const val CARD_RATIO = 0.716f
+
+/** How far (degrees) a full drag across the card tilts it in 3D. */
+private const val MAX_TILT_DEGREES = 24f
+
+/**
+ * Full-screen card viewer: the card is a 3D object you can grab and tilt — it springs back
+ * to flat on release — and foils catch a holographic sheen that slides with the tilt
+ * (plus a slow idle shimmer so they're alive even at rest). Tapping outside dismisses.
+ */
 @Composable
 private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        val scope = rememberCoroutineScope()
+        // x/y in -1..1 — how far the card is tilted on each axis.
+        val tilt = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+        val springBack = spring<Offset>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        )
+
+        val idleTransition = rememberInfiniteTransition(label = "foil-idle")
+        val idle by idleTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 5200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "foil-idle-sweep",
+        )
+        val sweep = idle + (tilt.value.x - tilt.value.y) * 0.6f
+
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -661,12 +705,49 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            AsyncImage(
-                model = card.imageUrl,
-                contentDescription = card.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .aspectRatio(CARD_RATIO)
+                    .graphicsLayer {
+                        rotationY = tilt.value.x * MAX_TILT_DEGREES
+                        rotationX = -tilt.value.y * MAX_TILT_DEGREES
+                        cameraDistance = 14f * density
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragEnd = { scope.launch { tilt.animateTo(Offset.Zero, springBack) } },
+                            onDragCancel = { scope.launch { tilt.animateTo(Offset.Zero, springBack) } },
+                        ) { change, drag ->
+                            change.consume()
+                            val w = size.width.toFloat().coerceAtLeast(1f)
+                            val h = size.height.toFloat().coerceAtLeast(1f)
+                            scope.launch {
+                                tilt.snapTo(
+                                    Offset(
+                                        (tilt.value.x + drag.x / w * 2.2f).coerceIn(-1f, 1f),
+                                        (tilt.value.y + drag.y / h * 2.2f).coerceIn(-1f, 1f),
+                                    ),
+                                )
+                            }
+                        }
+                    },
+            ) {
+                val foil = if (card.isFoil) {
+                    Modifier.foilSheen(sweep = sweep, shape = RoundedCornerShape(14.dp), intensity = 0.9f)
+                } else {
+                    Modifier
+                }
+                AsyncImage(
+                    model = card.imageUrl,
+                    contentDescription = card.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(14.dp))
+                        .then(foil),
+                )
+            }
         }
     }
 }
