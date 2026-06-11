@@ -54,7 +54,7 @@ class CollectionViewModel @Inject constructor(
             importMessage.value = runCatching { repository.importCsv(csv, now) }
                 .fold(
                     onSuccess = { r -> "Imported ${r.imported} cards" + if (r.skipped > 0) " · ${r.skipped} skipped" else "" },
-                    onFailure = { e -> "Import failed: ${e.message}" },
+                    onFailure = { e -> "Import failed: ${e.message ?: e.javaClass.simpleName}" },
                 )
         }
     }

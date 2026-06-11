@@ -2,12 +2,14 @@ package com.deckpuller.ui.collection
 
 import app.cash.turbine.test
 import com.deckpuller.data.local.entity.CollectionCardEntity
+import com.deckpuller.data.repository.CollectionImportResult
 import com.deckpuller.data.repository.CollectionRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -45,5 +47,32 @@ class CollectionViewModelTest {
             assertEquals("Sol Ring", s.cards.single().name)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `importCsv success message includes skipped when nonzero`() = runTest {
+        coEvery { repo.importCsv("csv", 1L) } returns CollectionImportResult(imported = 10, skipped = 2)
+        val vm = CollectionViewModel(repo)
+        vm.importCsv("csv", 1L)
+        advanceUntilIdle()
+        assertEquals("Imported 10 cards · 2 skipped", vm.importMessage.value)
+    }
+
+    @Test
+    fun `importCsv success message omits skipped when zero`() = runTest {
+        coEvery { repo.importCsv("csv", 1L) } returns CollectionImportResult(imported = 5, skipped = 0)
+        val vm = CollectionViewModel(repo)
+        vm.importCsv("csv", 1L)
+        advanceUntilIdle()
+        assertEquals("Imported 5 cards", vm.importMessage.value)
+    }
+
+    @Test
+    fun `importCsv failure message uses class name when message null`() = runTest {
+        coEvery { repo.importCsv("csv", 1L) } throws RuntimeException()
+        val vm = CollectionViewModel(repo)
+        vm.importCsv("csv", 1L)
+        advanceUntilIdle()
+        assertEquals("Import failed: RuntimeException", vm.importMessage.value)
     }
 }
