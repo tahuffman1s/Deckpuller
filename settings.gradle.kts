@@ -20,4 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DeckPuller"
-include(":app")
+include(":shared")
+include(":androidApp")

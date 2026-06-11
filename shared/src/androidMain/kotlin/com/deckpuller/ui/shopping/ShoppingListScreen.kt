@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
-import com.deckpuller.R
+import com.deckpuller.shared.R
 import com.deckpuller.domain.StoreCartLinks
 import com.deckpuller.ui.common.CardImageDialog
 import com.deckpuller.ui.common.CardThumbnail
