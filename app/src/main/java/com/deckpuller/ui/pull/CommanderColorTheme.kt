@@ -28,6 +28,10 @@ fun CommanderColorTheme(colors: List<String>, content: @Composable () -> Unit) {
     )
 }
 
+/** The commander identity's pip hues as Compose colours (e.g. for confetti). Empty if
+ *  the identity is colourless/unrecognised — callers can fall back to a default palette. */
+fun manaColors(identity: List<String>): List<Color> = identity.mapNotNull(::manaColor)
+
 /** Representative hue for each MTG mana symbol. Black is a muted purple so it reads as
  *  an accent rather than a near-invisible true black. */
 private fun manaColor(symbol: String): Color? = when (symbol.uppercase()) {

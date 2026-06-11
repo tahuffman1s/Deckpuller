@@ -69,10 +69,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
@@ -123,6 +126,7 @@ fun PullRoute(
                 onShoppingList = onShoppingList,
                 onCelebrationFinished = { celebrationDismissed = true },
                 showCelebration = pull.isComplete && !celebrationDismissed,
+                celebrationColors = manaColors(commanderColors),
             )
         }
     }
@@ -144,12 +148,17 @@ fun PullScreen(
     onShoppingList: () -> Unit,
     onCelebrationFinished: () -> Unit,
     showCelebration: Boolean = false,
+    celebrationColors: List<Color> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     var searching by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var zoomedCard by remember { mutableStateOf<DeckCard?>(null) }
+    // "Fly into the deck": the just-completed card in flight, and the commander art's
+    // root-space bounds it flies toward.
+    var flyingCard by remember { mutableStateOf<FlyingCard?>(null) }
+    var commanderBounds by remember { mutableStateOf(Rect.Zero) }
 
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -250,6 +259,7 @@ fun PullScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(width = 30.dp, height = 42.dp)
+                                        .onGloballyPositioned { commanderBounds = it.boundsInRoot() }
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { zoomedCard = commander },
@@ -315,7 +325,10 @@ fun PullScreen(
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        // Outer box is NOT padded, so it shares the root coordinate space the
+        // fly-into-deck animation measures against; the content box keeps the inset.
+        Box(Modifier.fillMaxSize()) {
+          Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val areaHeightPx = constraints.maxHeight
@@ -356,6 +369,9 @@ fun PullScreen(
                                         onDecrement = onDecrement,
                                         onImageClick = { zoomedCard = it },
                                         collectionPresent = state.collectionPresent,
+                                        onCardCompleted = { c, bounds ->
+                                            flyingCard = FlyingCard(c.imageUrl, bounds)
+                                        },
                                     )
                                 }
                             }
@@ -384,10 +400,18 @@ fun PullScreen(
                     )
                 }
             }
+          }
 
-            if (showCelebration) {
-                CelebrationOverlay(onFinished = onCelebrationFinished)
-            }
+          flyingCard?.let { fc ->
+              FlyingCardOverlay(flying = fc, target = commanderBounds) { flyingCard = null }
+          }
+
+          if (showCelebration) {
+              CelebrationOverlay(
+                  onFinished = onCelebrationFinished,
+                  colors = celebrationColors,
+              )
+          }
         }
     }
 

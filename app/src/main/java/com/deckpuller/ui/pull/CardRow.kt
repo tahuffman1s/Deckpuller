@@ -27,15 +27,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -60,13 +66,31 @@ fun CardRow(
     onDecrement: (DeckCard) -> Unit,
     onImageClick: (DeckCard) -> Unit = {},
     collectionPresent: Boolean = false,
+    // Fired with the card's thumbnail bounds (in root coords) on the pull that completes
+    // it, so the screen can launch the "fly into the deck" animation.
+    onCardCompleted: (DeckCard, Rect) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     // Read the latest card/callback inside the long-running gesture coroutine so a
     // press-and-hold keeps (de)incrementing from the current count, not a stale snapshot.
     val currentCard by rememberUpdatedState(card)
-    val incrementNow by rememberUpdatedState(onIncrement)
     val scope = rememberCoroutineScope()
+    val feedback = rememberPullFeedback()
+    var thumbBounds by remember { mutableStateOf(Rect.Zero) }
+
+    // Every pull funnels through here: a tick (or a confirm buzz + fly-away on the
+    // increment that finishes the card), then the actual state change.
+    val pullNow by rememberUpdatedState<(DeckCard) -> Unit> { c ->
+        if (!c.isComplete) {
+            if (c.pulledQty + 1 >= c.requiredQty) {
+                feedback.completed()
+                onCardCompleted(c, thumbBounds)
+            } else {
+                feedback.pulled()
+            }
+            onIncrement(c)
+        }
+    }
 
     Row(
         modifier = modifier
@@ -81,13 +105,13 @@ fun CardRow(
                         // Stop once the card is fully pulled — otherwise the loop keeps
                         // firing no-op increments for the whole hold ("keeps trying to add").
                         while (isActive && !currentCard.isComplete) {
-                            incrementNow(currentCard)
+                            pullNow(currentCard)
                             delay(HOLD_REPEAT_MS)
                         }
                     }
                     val up = waitForUpOrCancellation()
                     holdJob.cancel()
-                    if (up != null && !repeated && !currentCard.isComplete) incrementNow(currentCard)
+                    if (up != null && !repeated && !currentCard.isComplete) pullNow(currentCard)
                 }
             }
             .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -105,6 +129,7 @@ fun CardRow(
             fallback = thumbnailPlaceholder,
             modifier = Modifier
                 .size(width = 46.dp, height = 64.dp)
+                .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { onImageClick(card) },
@@ -155,14 +180,14 @@ fun CardRow(
         HoldRepeatButton(
             enabled = card.pulledQty > 0,
             description = "Decrement ${card.name}",
-            onAction = { onDecrement(card) },
+            onAction = { feedback.removed(); onDecrement(card) },
         ) {
             Icon(Icons.Filled.Remove, contentDescription = null)
         }
         HoldRepeatButton(
             enabled = card.pulledQty < card.requiredQty,
             description = "Increment ${card.name}",
-            onAction = { onIncrement(card) },
+            onAction = { pullNow(card) },
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
         }
