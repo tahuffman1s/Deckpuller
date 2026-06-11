@@ -8,6 +8,7 @@ import com.deckpuller.data.image.CoilImagePrefetcher
 import com.deckpuller.data.image.ImagePrefetcher
 import com.deckpuller.data.local.AppDatabase
 import com.deckpuller.data.prefs.UserPreferences
+import com.deckpuller.data.prefs.createDataStore
 import com.deckpuller.data.remote.ArchidektApi
 import com.deckpuller.data.remote.ScryfallApi
 import com.deckpuller.data.repository.CollectionRepository
@@ -79,7 +80,13 @@ val appModule = module {
 
     single { ImageLoader(androidContext()) }
 
-    single { UserPreferences(androidContext()) }
+    single {
+        UserPreferences(
+            createDataStore {
+                androidContext().filesDir.resolve("datastore/user_prefs.preferences_pb").absolutePath
+            }
+        )
+    }
     single { CollectionImporter(androidContext()) }
     single { UpdateManager(get(), androidContext()) }
 

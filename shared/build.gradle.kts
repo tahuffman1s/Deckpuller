@@ -22,6 +22,7 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.datastore.preferences.core)
         }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
@@ -29,7 +30,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.navigation.compose)
-            implementation(libs.androidx.datastore.preferences)
 
             implementation(project.dependencies.platform(libs.compose.bom))
             implementation(libs.compose.ui)
