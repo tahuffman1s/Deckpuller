@@ -88,6 +88,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -178,6 +179,11 @@ fun PullScreen(
         if (scrub != null) {
             suppressScrollBubble = true
         } else {
+            // The rail's jump is launched asynchronously, so the programmatic scroll can
+            // begin a frame or two AFTER the finger lifts. Hold the suppression past that
+            // window, then wait for the list to come fully to rest — otherwise the bubble
+            // flashes in the middle when scrubbing to the very top or bottom.
+            delay(300)
             snapshotFlow { listState.isScrollInProgress }.first { !it }
             suppressScrollBubble = false
         }
@@ -218,7 +224,7 @@ fun PullScreen(
                         )
                     } else {
                         // Condensed: commander art + deck name with the pull count/percent
-                        // tucked underneath. A spinner sits by the title while refreshing.
+                        // tucked underneath. (The refresh spinner lives in the actions row.)
                         val pct = if (state.total == 0) 0 else (state.pulled * 100 / state.total)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -250,12 +256,6 @@ fun PullScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            if (isRefreshing) {
-                                CircularProgressIndicator(
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
                         }
                     }
                 },
@@ -265,6 +265,15 @@ fun PullScreen(
                             Icon(Icons.Filled.Close, contentDescription = "Close search")
                         }
                     } else {
+                        // Refresh spinner sits just left of the search button.
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(18.dp),
+                            )
+                        }
                         IconButton(onClick = { searching = true }) {
                             Icon(Icons.Filled.Search, contentDescription = "Search")
                         }
@@ -340,7 +349,7 @@ fun PullScreen(
                                 } else {
                                     (areaWidthPx - bubbleSizePx) / 2f
                                 }
-                                val fraction = scrub?.fraction ?: 0.42f
+                                val fraction = scrub?.fraction ?: 0.28f
                                 val yPx = (fraction * areaHeightPx - bubbleSizePx / 2f)
                                     .toInt()
                                     .coerceIn(0, (areaHeightPx - bubbleSizePx).toInt().coerceAtLeast(0))
