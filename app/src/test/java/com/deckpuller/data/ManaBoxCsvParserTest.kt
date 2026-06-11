@@ -70,11 +70,29 @@ class ManaBoxCsvParserTest {
         )
         assertEquals(1, result.cards.size)
         assertEquals(1, result.failedLines.size)
+        assertEquals(3, result.failedLines.single())
     }
 
     @Test
     fun `throws when required column missing`() {
         val ex = runCatching { ManaBoxCsvParser.parse("Set code,Quantity\nLTC,1") }.exceptionOrNull()
         assertTrue(ex is ManaBoxCsvParser.MissingColumnException)
+        val ex2 = runCatching { ManaBoxCsvParser.parse("Name,Set code\nSol Ring,LTC") }.exceptionOrNull()
+        assertTrue(ex2 is ManaBoxCsvParser.MissingColumnException)
+    }
+
+    @Test
+    fun `blank name is a failed line`() {
+        val result = parse(
+            "EDH,binder,,LTC,Commander,472,normal,uncommon,1,1,sid-1,1.5,false,false,near_mint,en,USD,2026-01-01",
+        )
+        assertEquals(0, result.cards.size)
+        assertEquals(1, result.failedLines.size)
+    }
+
+    @Test
+    fun `unescapes doubled quotes inside a quoted field`() {
+        val result = ManaBoxCsvParser.parse("Name,Quantity\n\"Ach! Hans, \"\"Run!\"\"\",1")
+        assertEquals("Ach! Hans, \"Run!\"", result.cards.single().name)
     }
 }
