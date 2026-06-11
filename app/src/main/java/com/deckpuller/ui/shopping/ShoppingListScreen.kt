@@ -83,8 +83,8 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     }
 
     fun copy() {
+        // Android 13+ shows its own clipboard confirmation, so don't add our own snackbar.
         clipboard.setText(AnnotatedString(StoreCartLinks.clipboardText(items)))
-        scope.launch { snackbar.showSnackbar("Card list copied to clipboard") }
     }
 
     val hasItems = state != null && state.items.isNotEmpty()
