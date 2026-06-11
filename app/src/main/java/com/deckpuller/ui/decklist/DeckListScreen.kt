@@ -177,7 +177,7 @@ private fun DeckMenu(deckName: String, onDelete: () -> Unit) {
             )
         }
         if (expanded) {
-            // Anchor the speed dial just above the kebab, right-aligned to it.
+            // Anchor the speed dial just below the kebab, right-aligned to it.
             val positionProvider = remember {
                 object : PopupPositionProvider {
                     override fun calculatePosition(
@@ -187,7 +187,8 @@ private fun DeckMenu(deckName: String, onDelete: () -> Unit) {
                         popupContentSize: IntSize,
                     ): IntOffset = IntOffset(
                         x = (anchorBounds.right - popupContentSize.width).coerceAtLeast(0),
-                        y = (anchorBounds.top - popupContentSize.height).coerceAtLeast(0),
+                        y = anchorBounds.bottom
+                            .coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
                     )
                 }
             }
