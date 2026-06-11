@@ -55,9 +55,11 @@ fun AlphabetRail(
     enabled: Set<Char>,
     onSelect: (Char) -> Unit,
     modifier: Modifier = Modifier,
+    onActiveLetterChange: (Char?) -> Unit = {},
 ) {
     val enabledState = rememberUpdatedState(enabled)
     val onSelectState = rememberUpdatedState(onSelect)
+    val onActiveLetterChangeState = rememberUpdatedState(onActiveLetterChange)
     // The index of the letter currently under the finger, or null when not dragging.
     var activeIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -77,6 +79,7 @@ fun AlphabetRail(
                         val c = ALPHABET[i]
                         if (c != last) {
                             last = c
+                            onActiveLetterChangeState.value(c)
                             if (c in enabledState.value) onSelectState.value(c)
                         }
                     }
@@ -91,6 +94,7 @@ fun AlphabetRail(
                         change.consume()
                     }
                     activeIndex = null
+                    onActiveLetterChangeState.value(null)
                 }
             },
         verticalArrangement = Arrangement.SpaceEvenly,

@@ -1,5 +1,8 @@
 package com.deckpuller.ui.pull
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,6 +47,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -132,6 +138,19 @@ fun PullScreen(
     val scope = rememberCoroutineScope()
     val alphabetIndex = remember(state.cards) { buildAlphabetIndex(state.cards) }
 
+    // Floating letter indicator: shows the section under the finger while scrubbing the
+    // rail, or the first visible card's initial while the list is flinging.
+    var railLetter by remember { mutableStateOf<Char?>(null) }
+    val scrollLetter by remember(state.cards) {
+        derivedStateOf {
+            state.cards.getOrNull(listState.firstVisibleItemIndex)
+                ?.name?.firstOrNull()?.uppercaseChar()?.takeIf { it.isLetter() } ?: '#'
+        }
+    }
+    val bubbleLetter = railLetter ?: scrollLetter
+    val showLetterBubble = alphabetIndex.isNotEmpty() &&
+        (railLetter != null || listState.isScrollInProgress)
+
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
@@ -189,34 +208,42 @@ fun PullScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
                 PullHeader(pulled = state.pulled, total = state.total, isRefreshing = isRefreshing)
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        // Clear the speed-dial FAB so the last card stays tappable.
-                        contentPadding = PaddingValues(bottom = 96.dp),
-                    ) {
-                        items(state.cards, key = { it.id }) { card ->
-                            CardRow(
-                                card = card,
-                                onIncrement = onIncrement,
-                                onDecrement = onDecrement,
-                                onImageClick = { zoomedCard = it },
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            // Clear the speed-dial FAB so the last card stays tappable.
+                            contentPadding = PaddingValues(bottom = 96.dp),
+                        ) {
+                            items(state.cards, key = { it.id }) { card ->
+                                CardRow(
+                                    card = card,
+                                    onIncrement = onIncrement,
+                                    onDecrement = onDecrement,
+                                    onImageClick = { zoomedCard = it },
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                        if (alphabetIndex.isNotEmpty()) {
+                            AlphabetRail(
+                                enabled = alphabetIndex.keys,
+                                onSelect = { letter ->
+                                    alphabetIndex[letter]?.let { index ->
+                                        scope.launch { listState.scrollToItem(index) }
+                                    }
+                                },
+                                onActiveLetterChange = { railLetter = it },
+                                modifier = Modifier.padding(top = 4.dp, bottom = 96.dp),
                             )
-                            HorizontalDivider()
                         }
                     }
-                    if (alphabetIndex.isNotEmpty()) {
-                        AlphabetRail(
-                            enabled = alphabetIndex.keys,
-                            onSelect = { letter ->
-                                alphabetIndex[letter]?.let { index ->
-                                    scope.launch { listState.scrollToItem(index) }
-                                }
-                            },
-                            modifier = Modifier.padding(top = 4.dp, bottom = 96.dp),
-                        )
-                    }
+                    LetterBubbleOverlay(
+                        visible = showLetterBubble,
+                        letter = bubbleLetter,
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 48.dp),
+                    )
                 }
             }
 
@@ -293,6 +320,38 @@ private fun MiniAction(label: String, icon: ImageVector, onClick: () -> Unit) {
         }
         SmallFloatingActionButton(onClick = onClick) {
             Icon(icon, contentDescription = label)
+        }
+    }
+}
+
+/** Fades the floating letter bubble in/out. Standalone so the non-scoped AnimatedVisibility resolves. */
+@Composable
+private fun LetterBubbleOverlay(visible: Boolean, letter: Char, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        LetterBubble(letter)
+    }
+}
+
+/** Big circular letter that floats over the list while scrolling or scrubbing the rail. */
+@Composable
+private fun LetterBubble(letter: Char) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary,
+        shadowElevation = 6.dp,
+        modifier = Modifier.size(64.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = letter.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
         }
     }
 }
