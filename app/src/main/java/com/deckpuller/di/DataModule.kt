@@ -6,10 +6,13 @@ import coil.ImageLoader
 import com.deckpuller.data.image.CoilImagePrefetcher
 import com.deckpuller.data.image.ImagePrefetcher
 import com.deckpuller.data.local.AppDatabase
+import com.deckpuller.data.local.CollectionDao
 import com.deckpuller.data.local.DeckDao
 import com.deckpuller.data.remote.ArchidektApi
 import com.deckpuller.data.remote.ScryfallApi
+import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.DeckRepository
+import com.deckpuller.data.repository.DefaultCollectionRepository
 import com.deckpuller.data.repository.DefaultDeckRepository
 import dagger.Binds
 import dagger.Module
@@ -31,6 +34,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindDeckRepository(impl: DefaultDeckRepository): DeckRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCollectionRepository(impl: DefaultCollectionRepository): CollectionRepository
 
     @Binds
     @Singleton
@@ -78,13 +85,17 @@ abstract class DataModule {
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "deckpuller.db")
-                .addMigrations(AppDatabase.MIGRATION_2_3)
+                .addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
 
         @Provides
         @Singleton
         fun provideDeckDao(db: AppDatabase): DeckDao = db.deckDao()
+
+        @Provides
+        @Singleton
+        fun provideCollectionDao(db: AppDatabase): CollectionDao = db.collectionDao()
 
         @Provides
         @Singleton
