@@ -47,3 +47,6 @@ google-services.json
 # Signing secrets — NEVER commit these
 *signing-credentials*
 *.b64
+
+# Local example/personal collection exports (ManaBox CSVs)
+ManaBox_Collection_*.csv
