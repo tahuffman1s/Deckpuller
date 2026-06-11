@@ -75,14 +75,16 @@ fun CardRow(
                     val holdJob = scope.launch {
                         delay(HOLD_DELAY_MS)
                         repeated = true
-                        while (isActive) {
+                        // Stop once the card is fully pulled — otherwise the loop keeps
+                        // firing no-op increments for the whole hold ("keeps trying to add").
+                        while (isActive && !currentCard.isComplete) {
                             incrementNow(currentCard)
                             delay(HOLD_REPEAT_MS)
                         }
                     }
                     val up = waitForUpOrCancellation()
                     holdJob.cancel()
-                    if (up != null && !repeated) incrementNow(currentCard)
+                    if (up != null && !repeated && !currentCard.isComplete) incrementNow(currentCard)
                 }
             }
             .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -187,31 +189,30 @@ private fun HoldRepeatButton(
                 role = Role.Button
                 if (!enabled) disabled()
             }
-            .then(
-                if (enabled) {
-                    Modifier.pointerInput(Unit) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = true)
-                            down.consume()
-                            var repeated = false
-                            val holdJob = scope.launch {
-                                delay(HOLD_DELAY_MS)
-                                repeated = true
-                                while (isActive) {
-                                    if (enabledNow) actionNow()
-                                    delay(HOLD_REPEAT_MS)
-                                }
-                            }
-                            val up = waitForUpOrCancellation()
-                            holdJob.cancel()
-                            up?.consume()
-                            if (up != null && !repeated) actionNow()
+            // The gesture stays attached even when disabled. Swapping it out for a plain
+            // Modifier mid-hold (e.g. when the count hits its bound) cancels the gesture
+            // before holdJob.cancel() runs, orphaning the repeat loop on the composition
+            // scope so it spins forever. Instead we keep it and guard every action with
+            // enabledNow, breaking the loop the moment the bound is reached.
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = true)
+                    down.consume()
+                    var repeated = false
+                    val holdJob = scope.launch {
+                        delay(HOLD_DELAY_MS)
+                        repeated = true
+                        while (isActive && enabledNow) {
+                            actionNow()
+                            delay(HOLD_REPEAT_MS)
                         }
                     }
-                } else {
-                    Modifier
-                },
-            ),
+                    val up = waitForUpOrCancellation()
+                    holdJob.cancel()
+                    up?.consume()
+                    if (up != null && !repeated && enabledNow) actionNow()
+                }
+            },
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }

@@ -21,7 +21,8 @@ data class PullUiState(
     val total: Int,
     val searchQuery: String,
     val subtitles: List<String> = emptyList(),
-    val activeFilter: String? = null,
+    val activeFilters: Set<String> = emptySet(),
+    val commander: DeckCard? = null,
 ) {
     val isComplete: Boolean get() = total > 0 && pulled == total
 }
@@ -37,15 +38,16 @@ class PullViewModel @Inject constructor(
 
     private val deckId: Long = checkNotNull(savedStateHandle["deckId"])
     private val query = MutableStateFlow("")
-    private val filter = MutableStateFlow<String?>(null)
+    private val filters = MutableStateFlow<Set<String>>(emptySet())
     val isRefreshing = MutableStateFlow(false)
 
     val state: StateFlow<PullUiState?> =
-        combine(repository.observeDeck(deckId), query, filter) { deck, q, f ->
+        combine(repository.observeDeck(deckId), query, filters) { deck, q, f ->
             deck?.let {
-                // Subtitle filter narrows first, then the name search, then alphabetise.
-                val byFilter = if (f == null) it.cards
-                    else it.cards.filter { card -> subtitleOf(card) == f }
+                // Category filters narrow first (a card matches if it's in ANY selected
+                // category), then the name search, then alphabetise.
+                val byFilter = if (f.isEmpty()) it.cards
+                    else it.cards.filter { card -> subtitleOf(card) in f }
                 val filtered = if (q.isBlank()) byFilter
                     else byFilter.filter { card -> card.name.contains(q, ignoreCase = true) }
                 PullUiState(
@@ -59,14 +61,25 @@ class PullViewModel @Inject constructor(
                         .filter { s -> s.isNotBlank() && s != "Unknown" }
                         .distinct()
                         .sorted(),
-                    activeFilter = f,
+                    activeFilters = f,
+                    // Surfaced next to the deck title; taken from the full deck so it
+                    // shows even while a filter/search hides it from the list.
+                    commander = it.cards.firstOrNull { card ->
+                        card.category.contains("Commander", ignoreCase = true)
+                    },
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun onSearchChange(value: String) { query.value = value }
 
-    fun onFilterChange(value: String?) { filter.value = value }
+    /** Toggle a category in/out of the active filter set (multi-select). */
+    fun onFilterToggle(value: String) {
+        val current = filters.value
+        filters.value = if (value in current) current - value else current + value
+    }
+
+    fun onClearFilters() { filters.value = emptySet() }
 
     fun increment(card: DeckCard) {
         if (card.pulledQty >= card.requiredQty) return
