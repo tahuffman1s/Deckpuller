@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.unit.dp
+import kotlin.math.hypot
 
 /** Classic trading-card holo spectrum — pink → violet → cyan → green → gold, looped. */
 private val HOLO_COLORS = listOf(
@@ -51,34 +52,45 @@ fun Modifier.foilSheen(
     val outline = shape.createOutline(size, layoutDirection, this)
     val clip = Path().apply { addOutline(outline) }
     clipPath(clip) {
-        val w = size.width
-        val h = size.height
-        // Diagonal rainbow band, mirror-tiled so it wraps seamlessly as it slides.
+        // Both layers are diagonal gradients tiled with TileMode.Repeated and translated
+        // along their own axis by exactly one period over sweep 0→1. A repeated gradient
+        // is periodic with period = |end - start|, so shifting by one period lands on an
+        // identical field: sweep == 0 draws the same pixels as sweep == 1, which makes the
+        // looping (Restart) animation seamless with no jump at the wrap.
         val phase = (sweep % 1f + 1f) % 1f
-        val travel = w * 1.5f
-        val offset = phase * travel - w * 0.25f
-        val band = w * 0.9f
+        val diag = hypot(size.width, size.height)
+        val dir = Offset(size.width / diag, size.height / diag)
+
+        // Rolling rainbow. HOLO_COLORS starts and ends on the same hue, so tiles abut
+        // without a seam.
+        val bandPeriod = diag * 0.85f
+        val bandStart = dir * (phase * bandPeriod)
         drawRect(
             brush = Brush.linearGradient(
                 colors = HOLO_COLORS,
-                start = Offset(offset - band, 0f),
-                end = Offset(offset, h),
-                tileMode = TileMode.Mirror,
+                start = bandStart,
+                end = bandStart + dir * bandPeriod,
+                tileMode = TileMode.Repeated,
             ),
             alpha = 0.35f * intensity,
             blendMode = BlendMode.Plus,
         )
-        // A narrow specular glint riding just ahead of the band.
-        val glint = ((sweep + 0.15f) % 1f + 1f) % 1f
+
+        // A crisp specular glint, offset a quarter-tile so it doesn't sit on the band.
+        val glintPeriod = diag * 0.85f
+        val glintStart = dir * ((phase + 0.25f) * glintPeriod)
         drawRect(
             brush = Brush.linearGradient(
                 colorStops = arrayOf(
-                    (glint - 0.12f).coerceIn(0f, 1f) to Color.Transparent,
-                    glint.coerceIn(0f, 1f) to Color.White.copy(alpha = 0.55f * intensity),
-                    (glint + 0.12f).coerceIn(0f, 1f) to Color.Transparent,
+                    0f to Color.Transparent,
+                    0.45f to Color.Transparent,
+                    0.5f to Color.White.copy(alpha = 0.6f * intensity),
+                    0.55f to Color.Transparent,
+                    1f to Color.Transparent,
                 ),
-                start = Offset(0f, 0f),
-                end = Offset(w, h),
+                start = glintStart,
+                end = glintStart + dir * glintPeriod,
+                tileMode = TileMode.Repeated,
             ),
             blendMode = BlendMode.Plus,
         )

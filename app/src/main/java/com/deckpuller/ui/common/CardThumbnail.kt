@@ -34,6 +34,26 @@ fun scryfallImageUrl(scryfallId: String?, version: String = "small"): String? {
 }
 
 /**
+ * Scryfall's canonical "card back" id — the standard brown Magic back, served from the
+ * dedicated card-backs CDN ([scryfallGenericCardBackUrl]).
+ */
+private const val MTG_CARD_BACK_ID = "0aeebaf5-8c7d-4636-9e82-8c27447861f7"
+
+/**
+ * The back-face image for a double-faced card, addressed via the CDN's `back/` path. For a
+ * single-faced card this 404s (there is no real back), so callers should fall back to
+ * [scryfallGenericCardBackUrl] on a load error.
+ */
+fun scryfallBackFaceUrl(scryfallId: String?, version: String = "small"): String? {
+    val id = scryfallId?.trim()?.lowercase()?.takeIf { it.length >= 2 } ?: return null
+    return "https://cards.scryfall.io/$version/back/${id[0]}/${id[1]}/$id.jpg"
+}
+
+/** The standard Magic card back, served from Scryfall's card-backs CDN. */
+fun scryfallGenericCardBackUrl(version: String = "normal"): String =
+    "https://backs.scryfall.io/$version/${MTG_CARD_BACK_ID[0]}/${MTG_CARD_BACK_ID[1]}/$MTG_CARD_BACK_ID.jpg"
+
+/**
  * The little rounded card thumbnail used across the pull, collection and shopping screens.
  * Tapping it (when [onClick] is supplied) zooms the card, matching the pull screen.
  */

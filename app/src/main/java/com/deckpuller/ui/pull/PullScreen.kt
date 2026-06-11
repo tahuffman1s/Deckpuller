@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -81,13 +80,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
@@ -102,6 +103,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import com.deckpuller.ui.common.scryfallBackFaceUrl
+import com.deckpuller.ui.common.scryfallGenericCardBackUrl
+import kotlin.math.PI
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -170,6 +176,8 @@ fun PullScreen(
     var zoomedCard by remember { mutableStateOf<DeckCard?>(null) }
     // The just-completed card, exploding into pieces where it sat in the list.
     var shatteringCard by remember { mutableStateOf<ShatteringCard?>(null) }
+    // Commander art's root-space bounds — the spawn point for the deck-complete cascade.
+    var commanderBounds by remember { mutableStateOf(Rect.Zero) }
 
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -270,6 +278,7 @@ fun PullScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(width = 30.dp, height = 42.dp)
+                                        .onGloballyPositioned { commanderBounds = it.boundsInRoot() }
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { zoomedCard = commander },
@@ -417,9 +426,15 @@ fun PullScreen(
           }
 
           if (showCelebration) {
+              // Banner + confetti first, then the Windows-95-Solitaire cascade on top: the
+              // commander spits out a stream of cards that bounce down the screen and burst.
               CelebrationOverlay(
                   onFinished = onCelebrationFinished,
                   colors = celebrationColors,
+              )
+              DeckCompletionCascade(
+                  imageUrl = state.commander?.imageUrl,
+                  source = commanderBounds,
               )
           }
         }
@@ -661,13 +676,18 @@ private fun LetterBubble(letter: Char) {
 /** Standard Magic card aspect ratio (63mm × 88mm). */
 private const val CARD_RATIO = 0.716f
 
-/** How far (degrees) a full drag across the card tilts it in 3D. */
-private const val MAX_TILT_DEGREES = 24f
+/** Max pitch (degrees) the card tilts when dragged vertically; it springs back to flat. */
+private const val MAX_PITCH_DEGREES = 24f
+
+/** Degrees of yaw per full-width horizontal drag — enough to comfortably flip past 180°. */
+private const val YAW_PER_WIDTH = 220f
 
 /**
- * Full-screen card viewer: the card is a 3D object you can grab and tilt — it springs back
- * to flat on release — and foils catch a holographic sheen that slides with the tilt
- * (plus a slow idle shimmer so they're alive even at rest). Tapping outside dismisses.
+ * Full-screen card viewer. The card is a real 3D object: drag horizontally to spin it
+ * around and see its back (it snaps to whichever face you let go nearest), drag vertically
+ * to tilt it (that springs back to flat). The front of a foil catches a holographic sheen
+ * that slides with the motion; the back never does. The back is the card's true reverse
+ * for double-faced cards, otherwise the standard Magic card back. Tapping outside dismisses.
  */
 @Composable
 private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
@@ -676,12 +696,20 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         val scope = rememberCoroutineScope()
-        // x/y in -1..1 — how far the card is tilted on each axis.
-        val tilt = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
-        val springBack = spring<Offset>(
+        val yaw = remember { Animatable(0f) }    // free-spinning; snaps to nearest face on release
+        val pitch = remember { Animatable(0f) }  // springs back to flat on release
+        val springBack = spring<Float>(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow,
         )
+        val snapFace = spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        )
+
+        // Which face points at us: the back is showing while yaw sits in the rear half-turn.
+        val norm = ((yaw.value % 360f) + 360f) % 360f
+        val showBack = norm > 90f && norm < 270f
 
         val idleTransition = rememberInfiniteTransition(label = "foil-idle")
         val idle by idleTransition.animateFloat(
@@ -693,7 +721,16 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
             ),
             label = "foil-idle-sweep",
         )
-        val sweep = idle + (tilt.value.x - tilt.value.y) * 0.6f
+        // Idle drift plus a slide that tracks how far the card is turned/tilted.
+        val sweep = idle + sin(yaw.value * PI.toFloat() / 180f) * 0.6f -
+            (pitch.value / MAX_PITCH_DEGREES) * 0.4f
+
+        // Back face: the real reverse of a double-faced card, falling back to the standard
+        // Magic back when that 404s (single-faced cards have no real back).
+        val genericBack = remember { scryfallGenericCardBackUrl("normal") }
+        var backUrl by remember(card.scryfallId) {
+            mutableStateOf(scryfallBackFaceUrl(card.scryfallId, "normal") ?: genericBack)
+        }
 
         Box(
             modifier = Modifier
@@ -710,43 +747,64 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                     .fillMaxWidth(0.82f)
                     .aspectRatio(CARD_RATIO)
                     .graphicsLayer {
-                        rotationY = tilt.value.x * MAX_TILT_DEGREES
-                        rotationX = -tilt.value.y * MAX_TILT_DEGREES
-                        cameraDistance = 14f * density
+                        rotationY = yaw.value
+                        rotationX = pitch.value
+                        cameraDistance = 16f * density
                     }
                     .pointerInput(Unit) {
+                        val settle: () -> Unit = {
+                            scope.launch { pitch.animateTo(0f, springBack) }
+                            scope.launch {
+                                yaw.animateTo((yaw.value / 180f).roundToInt() * 180f, snapFace)
+                            }
+                        }
                         detectDragGestures(
-                            onDragEnd = { scope.launch { tilt.animateTo(Offset.Zero, springBack) } },
-                            onDragCancel = { scope.launch { tilt.animateTo(Offset.Zero, springBack) } },
+                            onDragEnd = settle,
+                            onDragCancel = settle,
                         ) { change, drag ->
                             change.consume()
                             val w = size.width.toFloat().coerceAtLeast(1f)
                             val h = size.height.toFloat().coerceAtLeast(1f)
+                            // One coroutine, sequential snapTo: snapTo completes synchronously
+                            // and both read the latest value, so deltas accumulate cleanly.
                             scope.launch {
-                                tilt.snapTo(
-                                    Offset(
-                                        (tilt.value.x + drag.x / w * 2.2f).coerceIn(-1f, 1f),
-                                        (tilt.value.y + drag.y / h * 2.2f).coerceIn(-1f, 1f),
-                                    ),
+                                yaw.snapTo(yaw.value + drag.x / w * YAW_PER_WIDTH)
+                                pitch.snapTo(
+                                    (pitch.value - drag.y / h * 60f)
+                                        .coerceIn(-MAX_PITCH_DEGREES, MAX_PITCH_DEGREES),
                                 )
                             }
                         }
                     },
             ) {
-                val foil = if (card.isFoil) {
-                    Modifier.foilSheen(sweep = sweep, shape = RoundedCornerShape(14.dp), intensity = 0.9f)
+                if (showBack) {
+                    AsyncImage(
+                        model = backUrl,
+                        contentDescription = "${card.name} (back)",
+                        contentScale = ContentScale.Crop,
+                        // Counter-rotate so the back reads upright (not mirrored) at 180°.
+                        onError = { if (backUrl != genericBack) backUrl = genericBack },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { rotationY = 180f }
+                            .clip(RoundedCornerShape(14.dp)),
+                    )
                 } else {
-                    Modifier
+                    val foil = if (card.isFoil) {
+                        Modifier.foilSheen(sweep = sweep, shape = RoundedCornerShape(14.dp), intensity = 0.9f)
+                    } else {
+                        Modifier
+                    }
+                    AsyncImage(
+                        model = card.imageUrl,
+                        contentDescription = card.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(14.dp))
+                            .then(foil),
+                    )
                 }
-                AsyncImage(
-                    model = card.imageUrl,
-                    contentDescription = card.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(14.dp))
-                        .then(foil),
-                )
             }
         }
     }

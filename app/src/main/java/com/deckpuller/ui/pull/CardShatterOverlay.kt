@@ -17,13 +17,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import coil.imageLoader
-import coil.request.ImageRequest
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -66,20 +63,8 @@ fun CardShatterOverlay(shard: ShatteringCard, onFinished: () -> Unit) {
     var bitmap by remember(shard) { mutableStateOf<ImageBitmap?>(null) }
 
     LaunchedEffect(shard) {
-        val result = context.imageLoader.execute(
-            ImageRequest.Builder(context)
-                .data(shard.imageUrl)
-                // Software bitmap so we can re-draw its slices through a custom canvas.
-                .allowHardware(false)
-                .build(),
-        )
-        val drawable = result.drawable
-        val androidBitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
-        if (androidBitmap == null) {
-            onFinished()
-        } else {
-            bitmap = androidBitmap.asImageBitmap()
-        }
+        val loaded = context.loadCardBitmap(shard.imageUrl)
+        if (loaded == null) onFinished() else bitmap = loaded
     }
 
     val bmp = bitmap ?: return

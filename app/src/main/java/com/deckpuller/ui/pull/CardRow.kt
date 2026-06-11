@@ -126,21 +126,28 @@ fun CardRow(
         } else {
             Modifier
         }
-        AsyncImage(
-            model = card.imageUrl,
-            contentDescription = card.name,
-            contentScale = ContentScale.Crop,
-            placeholder = thumbnailPlaceholder,
-            error = thumbnailPlaceholder,
-            fallback = thumbnailPlaceholder,
-            modifier = Modifier
-                .size(width = 46.dp, height = 64.dp)
-                .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(foilShimmer)
-                .clickable { onImageClick(card) },
-        )
+        // Once a card is complete it's exploded away — the slot stays (so the row and its
+        // − button remain) but the little card vanishes. Hitting − drops it back below
+        // complete and the thumbnail returns.
+        if (card.isComplete) {
+            Box(modifier = Modifier.size(width = 46.dp, height = 64.dp))
+        } else {
+            AsyncImage(
+                model = card.imageUrl,
+                contentDescription = card.name,
+                contentScale = ContentScale.Crop,
+                placeholder = thumbnailPlaceholder,
+                error = thumbnailPlaceholder,
+                fallback = thumbnailPlaceholder,
+                modifier = Modifier
+                    .size(width = 46.dp, height = 64.dp)
+                    .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .then(foilShimmer)
+                    .clickable { onImageClick(card) },
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = card.name,
