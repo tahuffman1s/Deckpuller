@@ -1,4 +1,4 @@
-package com.deckpuller.ui.pull
+package com.deckpuller.ui.common
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode

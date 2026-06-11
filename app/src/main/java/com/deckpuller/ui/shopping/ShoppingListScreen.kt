@@ -202,6 +202,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
             imageUrl = scryfallImageUrl(item.scryfallId, version = "normal"),
             name = item.name,
             onDismiss = { zoomedItem = null },
+            scryfallId = item.scryfallId,
         )
     }
 }

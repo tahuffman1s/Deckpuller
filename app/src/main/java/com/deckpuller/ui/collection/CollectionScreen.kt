@@ -217,6 +217,8 @@ fun CollectionScreen(
             imageUrl = scryfallImageUrl(card.scryfallId, version = "normal"),
             name = card.name,
             onDismiss = { zoomedCard = null },
+            scryfallId = card.scryfallId,
+            isFoil = card.finish != "normal",
         )
     }
 }
