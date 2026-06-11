@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.lifecycleScope
 import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.repository.CollectionRepository
+import com.deckpuller.data.repository.toUserMessage
 import com.deckpuller.ui.AppRoot
 import com.deckpuller.ui.theme.DeckPullerTheme
 import dagger.hilt.EntryPoint
@@ -27,7 +28,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -50,11 +53,11 @@ class MainActivity : ComponentActivity() {
         val entry = EntryPointAccessors.fromApplication(applicationContext, ImportEntryPoint::class.java)
         lifecycleScope.launch {
             val result = runCatching {
-                val text = entry.collectionImporter().readText(uri)
+                val text = withContext(Dispatchers.IO) { entry.collectionImporter().readText(uri) }
                 entry.collectionRepository().importCsv(text, System.currentTimeMillis())
             }
             val msg = result.fold(
-                onSuccess = { "Imported ${it.imported} cards" + if (it.skipped > 0) " · ${it.skipped} skipped" else "" },
+                onSuccess = { it.toUserMessage() },
                 onFailure = { "Import failed: ${it.message ?: it.javaClass.simpleName}" },
             )
             Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()

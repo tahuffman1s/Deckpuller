@@ -16,6 +16,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,7 +27,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/csv" />
                 <data android:mimeType="text/comma-separated-values" />
-                <data android:mimeType="text/plain" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

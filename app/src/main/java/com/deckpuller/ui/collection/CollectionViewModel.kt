@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.data.repository.CollectionRepository
+import com.deckpuller.data.repository.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +59,7 @@ class CollectionViewModel @Inject constructor(
         viewModelScope.launch {
             importMessage.value = runCatching { repository.importCsv(csv, now) }
                 .fold(
-                    onSuccess = { r -> "Imported ${r.imported} cards" + if (r.skipped > 0) " · ${r.skipped} skipped" else "" },
+                    onSuccess = { r -> r.toUserMessage() },
                     onFailure = { e -> "Import failed: ${e.message ?: e.javaClass.simpleName}" },
                 )
         }

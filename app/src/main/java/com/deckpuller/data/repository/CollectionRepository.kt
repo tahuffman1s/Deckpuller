@@ -6,6 +6,10 @@ import kotlinx.coroutines.flow.Flow
 /** Result of importing a ManaBox CSV. */
 data class CollectionImportResult(val imported: Int, val skipped: Int)
 
+/** User-facing summary of a successful import, e.g. "Imported 812 cards · 3 skipped". */
+fun CollectionImportResult.toUserMessage(): String =
+    "Imported $imported cards" + if (skipped > 0) " · $skipped skipped" else ""
+
 interface CollectionRepository {
     /** nameKey -> aggregated ownership, recomputed whenever the collection changes. */
     fun observeOwnedByName(): Flow<Map<String, OwnedInfo>>
