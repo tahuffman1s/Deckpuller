@@ -1,5 +1,11 @@
 package com.deckpuller.ui.common
 
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -18,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -48,6 +57,15 @@ private const val MAX_PITCH_DEGREES = 24f
 
 /** Degrees of yaw per full-width horizontal drag — enough to comfortably flip past 180°. */
 private const val YAW_PER_WIDTH = 220f
+
+/** How far the card leans in response to tilting the phone — a subtle parallax, in degrees. */
+private const val MAX_DEVICE_TILT_DEGREES = 10f
+
+/** Fraction of the phone's own tilt the card mirrors (the rest is clamped away — keeps it gentle). */
+private const val DEVICE_TILT_GAIN = 0.35f
+
+/** Low-pass factor for the sensor stream: higher = smoother but laggier (0..1, kept high). */
+private const val DEVICE_TILT_SMOOTHING = 0.85f
 
 /**
  * Full-screen card viewer, shared by every screen that zooms a card (pull, collection,
@@ -77,6 +95,11 @@ fun CardImageDialog(
         // flip past 90°.
         var yaw by remember { mutableFloatStateOf(0f) }
         var pitch by remember { mutableFloatStateOf(0f) }
+        // Subtle gyroscopic parallax: a gentle lean added on top of the drag, driven by how the
+        // phone is held. Kept separate from yaw/pitch so they never disturb the face-snap or
+        // which-side-is-up logic — purely a visual flourish (wired up by the sensor below).
+        var tiltX by remember { mutableFloatStateOf(0f) }
+        var tiltY by remember { mutableFloatStateOf(0f) }
         var settleJob by remember { mutableStateOf<Job?>(null) }
         val springBack = spring<Float>(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -101,15 +124,56 @@ fun CardImageDialog(
             ),
             label = "foil-idle-sweep",
         )
-        // Idle drift plus a slide that tracks how far the card is turned/tilted.
+        // Idle drift plus a slide that tracks how far the card is turned/tilted — including the
+        // gyro lean, so foils throw a little extra glint as you tip the phone.
         val sweep = idle + sin(yaw * PI.toFloat() / 180f) * 0.6f -
-            (pitch / MAX_PITCH_DEGREES) * 0.4f
+            (pitch / MAX_PITCH_DEGREES) * 0.4f +
+            (tiltY / MAX_DEVICE_TILT_DEGREES) * 0.25f
 
         // Back face: the real reverse of a double-faced card, falling back to the standard
         // Magic back when that 404s (single-faced cards have no real back).
         val genericBack = remember { scryfallGenericCardBackUrl("normal") }
         var backUrl by remember(scryfallId) {
             mutableStateOf(scryfallBackFaceUrl(scryfallId, "normal") ?: genericBack)
+        }
+
+        val view = LocalView.current
+
+        val context = LocalContext.current
+        DisposableEffect(Unit) {
+            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            // Game rotation vector is drift-free and magnetometer-free; fall back to the plain
+            // rotation vector (then nothing) so devices without it simply skip the effect.
+            val sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+                ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+            // Captured on the first reading so tilt is relative to however you're holding the
+            // phone right now, not to some absolute flat-on-a-table pose.
+            var basePitch = Float.NaN
+            var baseRoll = Float.NaN
+            val listener = object : SensorEventListener {
+                private val rotation = FloatArray(9)
+                private val angles = FloatArray(3)
+                override fun onSensorChanged(event: SensorEvent) {
+                    SensorManager.getRotationMatrixFromVector(rotation, event.values)
+                    SensorManager.getOrientation(rotation, angles)
+                    val pitchDeg = Math.toDegrees(angles[1].toDouble()).toFloat()
+                    val rollDeg = Math.toDegrees(angles[2].toDouble()).toFloat()
+                    if (basePitch.isNaN()) {
+                        basePitch = pitchDeg
+                        baseRoll = rollDeg
+                    }
+                    val targetX = ((pitchDeg - basePitch) * DEVICE_TILT_GAIN)
+                        .coerceIn(-MAX_DEVICE_TILT_DEGREES, MAX_DEVICE_TILT_DEGREES)
+                    val targetY = ((rollDeg - baseRoll) * DEVICE_TILT_GAIN)
+                        .coerceIn(-MAX_DEVICE_TILT_DEGREES, MAX_DEVICE_TILT_DEGREES)
+                    // Low-pass so it eases rather than jitters with raw sensor noise.
+                    tiltX = tiltX * DEVICE_TILT_SMOOTHING + targetX * (1f - DEVICE_TILT_SMOOTHING)
+                    tiltY = tiltY * DEVICE_TILT_SMOOTHING + targetY * (1f - DEVICE_TILT_SMOOTHING)
+                }
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            }
+            sensorManager?.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+            onDispose { sensorManager?.unregisterListener(listener) }
         }
 
         Box(
@@ -141,6 +205,9 @@ fun CardImageDialog(
                                 animate(yaw, target, animationSpec = snapFace) { v, _ -> yaw = v }
                             }
                         }
+                        // Each half-turn boundary (90°, 270°, …) is where the visible face flips;
+                        // a crisp tick there makes the flip feel physical.
+                        var lastHalfTurn = (yaw / 180f).roundToInt()
                         detectDragGestures(
                             onDragStart = { settleJob?.cancel() },
                             onDragEnd = settle,
@@ -151,6 +218,11 @@ fun CardImageDialog(
                             val h = size.height.toFloat().coerceAtLeast(1f)
                             yaw += drag.x / w * YAW_PER_WIDTH
                             pitch = (pitch - drag.y / h * 60f).coerceIn(-MAX_PITCH_DEGREES, MAX_PITCH_DEGREES)
+                            val half = (yaw / 180f).roundToInt()
+                            if (half != lastHalfTurn) {
+                                lastHalfTurn = half
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            }
                         }
                     },
             ) {
@@ -158,8 +230,8 @@ fun CardImageDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            rotationY = yaw
-                            rotationX = pitch
+                            rotationY = yaw + tiltY
+                            rotationX = pitch + tiltX
                             cameraDistance = 16f * density
                         },
                 ) {
