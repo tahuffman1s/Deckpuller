@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-label="DeckPuller icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C5CD6"/>
+      <stop offset="1" stop-color="#5B3FA6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#bg)"/>
+
+  <!-- Fanned stack of cards (pulled from a deck) -->
+  <g transform="rotate(-13 54 60)">
+    <rect x="38" y="34" width="32" height="46" rx="5" fill="#C3AEEF"/>
+  </g>
+  <g transform="rotate(13 54 60)">
+    <rect x="38" y="34" width="32" height="46" rx="5" fill="#C3AEEF"/>
+  </g>
+  <rect x="38" y="34" width="32" height="46" rx="5" fill="#FFFFFF"/>
+  <!-- Card accent (mana-pip suggestion) -->
+  <circle cx="54" cy="57" r="6" fill="#6A4FC0"/>
+</svg>
