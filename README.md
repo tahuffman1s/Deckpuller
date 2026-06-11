@@ -63,6 +63,7 @@ Building a physical MTG deck from a list is tedious — you scan a decklist, hun
 - **💾 Offline-friendly progress** — pull counts live in a local database and survive restarts.
 - **🎉 Completion celebration** — confetti when a deck hits 100%.
 - **🌙 Modern Material 3 UI** — edge-to-edge, dark-theme-first, with a speed-dial action button.
+- **⬆️ In-app auto-update** — checks GitHub Releases on launch and installs new versions for you ([details](docs/AUTO_UPDATE.md)).
 
 ## 🧭 How pulling works
 

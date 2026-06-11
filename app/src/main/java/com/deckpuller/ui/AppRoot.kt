@@ -16,6 +16,7 @@ import com.deckpuller.ui.importdeck.AddDeckScreen
 import com.deckpuller.ui.importdeck.ImportUiState
 import com.deckpuller.ui.importdeck.ImportViewModel
 import com.deckpuller.ui.pull.PullRoute
+import com.deckpuller.ui.update.UpdateGate
 
 private const val DECK_LIST = "deckList"
 private const val ADD_DECK = "addDeck"
@@ -74,4 +75,7 @@ fun AppRoot() {
             )
         }
     }
+
+    // Checks GitHub for a newer release and prompts to install; no-op when current.
+    UpdateGate()
 }
