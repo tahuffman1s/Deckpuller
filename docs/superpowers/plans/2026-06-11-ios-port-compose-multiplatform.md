@@ -23,10 +23,11 @@ Resolved real versions (knowledge cutoff was behind): **Kotlin 2.2.20 · CMP 1.9
 - [x] Task 2.4 — DataStore → datastore-preferences-core (KMP). **`UserPreferences` now in `commonMain`** (takes `DataStore<Preferences>`); Koin supplies the android path `<filesDir>/datastore/user_prefs.preferences_pb` (byte-identical to old default).
 - [x] Task 2.5 — Coil 2 → Coil 3.5.0 (+ coil-network-ktor3 over the existing Ktor client; `SingletonImageLoader.setSafe`). All AsyncImage sites + `loadCardBitmap` ported. Forced `kotlin-stdlib`→2.2.20 (Coil pins 2.4.0, unreadable by the compiler).
 
+- [x] Task 2.6 — konfetti → **ConfettiKit 0.8.0** (`io.github.vinceglb:confettikit`), a CMP port of Konfetti with the same Party/Position/Emitter API and iOS artifacts. `CelebrationOverlay`: `KonfettiView`→`ConfettiKit`, `Emitter(2, TimeUnit.SECONDS)`→`Emitter(2.seconds)`. (Chose the maintained KMP library over a hand-rolled confetti — less code, real iOS support.)
+- [x] Task 2.7 — navigation-compose → **`org.jetbrains.androidx.navigation:navigation-compose` 2.9.2** (JetBrains KMP fork, iOS artifacts). Same `androidx.navigation.*` packages → coordinate swap only, no code changes.
+
 **REMAINING on Linux (files still in `androidMain`):**
-- [ ] Task 2.6 — konfetti → custom Compose confetti.
-- [ ] Task 2.7 — navigation-compose → JetBrains KMP nav fork.
-- [ ] **commonMain promotion + apply `compose-multiplatform` plugin** (drop the androidx compose-BOM in `:shared`, switch to `compose.*` deps, move platform-free UI/data/domain to `commonMain`). HIGHEST RISK — best done as one focused step, ideally alongside iOS-target setup. This subsumes plan Task 1.3's intent.
+- [ ] **commonMain promotion + apply `compose-multiplatform` plugin** (drop the androidx compose-BOM in `:shared`, switch to `compose.*` deps, move platform-free UI/domain to `commonMain`; the data/prefs layer is already there). HIGHEST RISK — best done as one focused step, ideally alongside iOS-target setup. This subsumes plan Task 1.3's intent. NOTE: all third-party libs are now KMP/iOS-capable (Koin, Ktor, Room KMP, DataStore-MP, Coil 3, ConfettiKit, JetBrains nav), so this step is purely the Compose/source-set move + the `expect/actual` for the ~5 platform files (Phase 3).
 
 **REMAINING needs macOS/CI (Phases 3–4):** unchanged — `expect`/`actual` (haptics, CoreMotion tilt, UIDocumentPicker, share, self-update no-op) then the CI-build + SideStore sideload flow.
 
