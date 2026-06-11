@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Lets the app launch the installer for a downloaded update APK. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Stronger pull/complete haptics drive the vibrator directly (see PullFeedback). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".DeckPullerApp"

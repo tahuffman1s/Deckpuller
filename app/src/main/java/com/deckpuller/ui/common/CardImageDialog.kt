@@ -68,6 +68,13 @@ private const val DEVICE_TILT_GAIN = 0.35f
 private const val DEVICE_TILT_SMOOTHING = 0.85f
 
 /**
+ * How fast the neutral pose follows the phone (per sensor sample). The rest orientation slowly
+ * catches up to however you're holding the device, so the card sits flat when you hold still and
+ * only leans while you're actively moving it — and it always starts flat.
+ */
+private const val DEVICE_TILT_RECENTER = 0.02f
+
+/**
  * Full-screen card viewer, shared by every screen that zooms a card (pull, collection,
  * shopping). The card is a real 3D object: drag horizontally to spin it around and see its
  * back (it snaps to whichever face you let go nearest), drag vertically to tilt it (that
@@ -161,6 +168,11 @@ fun CardImageDialog(
                     if (basePitch.isNaN()) {
                         basePitch = pitchDeg
                         baseRoll = rollDeg
+                    } else {
+                        // The rest pose drifts toward the current hold, so a steady orientation
+                        // decays back to flat and only active movement produces a lean.
+                        basePitch += (pitchDeg - basePitch) * DEVICE_TILT_RECENTER
+                        baseRoll += (rollDeg - baseRoll) * DEVICE_TILT_RECENTER
                     }
                     val targetX = ((pitchDeg - basePitch) * DEVICE_TILT_GAIN)
                         .coerceIn(-MAX_DEVICE_TILT_DEGREES, MAX_DEVICE_TILT_DEGREES)
