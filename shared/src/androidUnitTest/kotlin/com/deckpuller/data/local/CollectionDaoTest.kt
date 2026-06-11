@@ -1,6 +1,7 @@
 package com.deckpuller.data.local
 
 import androidx.room.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.deckpuller.data.local.entity.CollectionCardEntity
 import kotlinx.coroutines.flow.first
@@ -20,10 +21,11 @@ class CollectionDaoTest {
 
     @Before
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(
+        db = Room.inMemoryDatabaseBuilder<AppDatabase>(
             ApplicationProvider.getApplicationContext(),
-            AppDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        ).setDriver(AndroidSQLiteDriver())
+            .allowMainThreadQueries()
+            .build()
         dao = db.collectionDao()
     }
 

@@ -1,6 +1,7 @@
 package com.deckpuller.data.repository
 
 import androidx.room.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.deckpuller.data.InvalidDeckUrlException
 import com.deckpuller.data.image.ImagePrefetcher
@@ -47,10 +48,11 @@ class DefaultDeckRepositoryTest {
 
     @Before
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(
+        db = Room.inMemoryDatabaseBuilder<AppDatabase>(
             ApplicationProvider.getApplicationContext(),
-            AppDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        ).setDriver(AndroidSQLiteDriver())
+            .allowMainThreadQueries()
+            .build()
     }
 
     @After

@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -13,6 +18,11 @@ kotlin {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
     sourceSets {
+        commonMain.dependencies {
+            implementation(libs.room.runtime)
+            implementation(libs.sqlite.bundled)
+            implementation(libs.kotlinx.coroutines.core)
+        }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -32,9 +42,6 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
-
-            implementation(libs.room.runtime)
-            implementation(libs.room.ktx)
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.okhttp)
@@ -67,6 +74,7 @@ kotlin {
 
 dependencies {
     add("kspAndroid", libs.room.compiler)
+    add("kspCommonMainMetadata", libs.room.compiler)
 }
 
 android {

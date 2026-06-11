@@ -1,6 +1,7 @@
 package com.deckpuller.di
 
 import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import coil.ImageLoader
 import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.image.CoilImagePrefetcher
@@ -26,6 +27,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
@@ -65,9 +67,11 @@ val appModule = module {
     single { ScryfallApi(get()) }
 
     single {
-        Room.databaseBuilder(androidContext(), AppDatabase::class.java, "deckpuller.db")
+        Room.databaseBuilder<AppDatabase>(androidContext(), "deckpuller.db")
             .addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
             .build()
     }
     single { get<AppDatabase>().deckDao() }
