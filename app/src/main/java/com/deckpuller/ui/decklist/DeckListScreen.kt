@@ -2,7 +2,6 @@ package com.deckpuller.ui.decklist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -50,11 +48,11 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
+import com.deckpuller.ui.common.CardImageDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +94,6 @@ fun DeckListScreen(
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(decks, key = { it.id }) { deck ->
                     DeckRow(deck = deck, onClick = { onDeckClick(deck.id) }, onDelete = { onDeleteDeck(deck.id) })
-                    HorizontalDivider()
                 }
             }
         }
@@ -157,10 +154,11 @@ private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Uni
     }
 
     if (zoomed && deck.commanderImageUrl != null) {
-        CommanderImageDialog(
+        CardImageDialog(
             imageUrl = deck.commanderImageUrl,
             name = deck.name,
             onDismiss = { zoomed = false },
+            scryfallId = deck.commanderScryfallId,
         )
     }
 }
@@ -238,29 +236,6 @@ private fun SpeedDialAction(label: String, icon: ImageVector, onClick: () -> Uni
         }
         SmallFloatingActionButton(onClick = onClick) {
             Icon(icon, contentDescription = label)
-        }
-    }
-}
-
-@Composable
-private fun CommanderImageDialog(imageUrl: String, name: String, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            )
         }
     }
 }

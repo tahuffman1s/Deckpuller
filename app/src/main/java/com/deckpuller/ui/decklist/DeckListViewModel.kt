@@ -17,6 +17,7 @@ data class DeckListItem(
     val pulled: Int,
     val total: Int,
     val commanderImageUrl: String? = null,
+    val commanderScryfallId: String? = null,
 )
 
 @HiltViewModel
@@ -37,6 +38,7 @@ class DeckListViewModel @Inject constructor(
                         pulled = dwc.cards.sumOf { it.pulledQty },
                         total = dwc.cards.sumOf { it.requiredQty },
                         commanderImageUrl = commander?.imageUrl,
+                        commanderScryfallId = commander?.scryfallId,
                     )
                 }
             }
