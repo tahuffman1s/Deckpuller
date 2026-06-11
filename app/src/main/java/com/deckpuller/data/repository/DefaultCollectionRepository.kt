@@ -6,8 +6,10 @@ import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.data.prefs.UserPreferences
 import com.deckpuller.domain.model.OwnedInfo
 import com.deckpuller.domain.model.OwnedPrinting
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class DefaultCollectionRepository @Inject constructor(
@@ -33,21 +35,23 @@ class DefaultCollectionRepository @Inject constructor(
         }
 
     override suspend fun importCsv(csv: String, now: Long): CollectionImportResult {
-        val parsed = ManaBoxCsvParser.parse(csv)
-        val rows = parsed.cards.map {
-            CollectionCardEntity(
-                nameKey = it.nameKey,
-                name = it.name,
-                setCode = it.setCode,
-                setName = it.setName,
-                collectorNumber = it.collectorNumber,
-                scryfallId = it.scryfallId,
-                finish = it.finish,
-                condition = it.condition,
-                language = it.language,
-                binderName = it.binderName,
-                quantity = it.quantity,
-            )
+        val parsed = withContext(Dispatchers.Default) { ManaBoxCsvParser.parse(csv) }
+        val rows = withContext(Dispatchers.Default) {
+            parsed.cards.map {
+                CollectionCardEntity(
+                    nameKey = it.nameKey,
+                    name = it.name,
+                    setCode = it.setCode,
+                    setName = it.setName,
+                    collectorNumber = it.collectorNumber,
+                    scryfallId = it.scryfallId,
+                    finish = it.finish,
+                    condition = it.condition,
+                    language = it.language,
+                    binderName = it.binderName,
+                    quantity = it.quantity,
+                )
+            }
         }
         dao.replaceAll(rows)
         val stored = dao.count()

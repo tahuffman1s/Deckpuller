@@ -43,7 +43,7 @@ fun CollectionRoute(onBack: () -> Unit) {
         state = state,
         importMessage = message,
         onSearchChange = viewModel::onSearchChange,
-        onImportCsv = { csv -> viewModel.importCsv(csv, System.currentTimeMillis()) },
+        onImportUri = { uri -> viewModel.importUri(uri, System.currentTimeMillis()) },
         onMessageShown = viewModel::clearMessage,
         onBack = onBack,
     )
@@ -55,23 +55,15 @@ fun CollectionScreen(
     state: CollectionUiState,
     importMessage: String?,
     onSearchChange: (String) -> Unit,
-    onImportCsv: (String) -> Unit,
+    onImportUri: (android.net.Uri) -> Unit,
     onMessageShown: () -> Unit,
     onBack: () -> Unit,
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            val text = context.contentResolver.openInputStream(uri)?.use {
-                it.bufferedReader().readText()
-            }
-            if (text != null) onImportCsv(text)
-        }
-    }
+    ) { uri -> if (uri != null) onImportUri(uri) }
 
     LaunchedEffect(importMessage) {
         importMessage?.let {
