@@ -87,6 +87,7 @@ class ShoppingListViewModel @Inject constructor(
         val missingIds = deck.cards
             .filter { card -> needFor(card, owned) > 0 }
             .map { it.scryfallId }
+            .filter { it.isNotBlank() }
         prices.value = deckRepository.prices(missingIds)
     }
 }

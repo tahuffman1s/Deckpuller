@@ -267,6 +267,13 @@ fun PullScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (state.collectionPresent) {
+                                    Text(
+                                        text = "You own ${state.ownedCards}/${state.ownedTotalCards} cards",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
