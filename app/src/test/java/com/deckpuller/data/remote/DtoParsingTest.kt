@@ -126,4 +126,19 @@ class DtoParsingTest {
         assertEquals(100, dto.results[0].size)
         assertEquals("http://img/a.jpg", dto.results[0].featured)
     }
+
+    @Test
+    fun `parses scryfall prices`() {
+        val payload = """
+        {
+          "data": [
+            { "id": "p1", "name": "Sol Ring",
+              "prices": { "usd": "1.49", "usd_foil": "5.00" } }
+          ],
+          "not_found": []
+        }
+        """.trimIndent()
+        val card = json.decodeFromString<ScryfallCollectionResponse>(payload).data.single()
+        assertEquals(1.49, card.prices?.usd?.toDouble()!!, 0.001)
+    }
 }

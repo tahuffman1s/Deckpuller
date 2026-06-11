@@ -27,6 +27,7 @@ data class ScryfallCardDto(
     @SerialName("color_identity") val colorIdentity: List<String> = emptyList(),
     @SerialName("image_uris") val imageUris: ScryfallImageUris? = null,
     @SerialName("card_faces") val cardFaces: List<ScryfallCardFaceDto> = emptyList(),
+    val prices: ScryfallPrices? = null,
 ) {
     /** Top-level type line, falling back to the front face for double-faced cards. */
     fun bestTypeLine(): String? = typeLine ?: cardFaces.firstOrNull()?.typeLine
@@ -46,4 +47,10 @@ data class ScryfallCardFaceDto(
 data class ScryfallImageUris(
     val small: String? = null,
     val normal: String? = null,
+)
+
+@Serializable
+data class ScryfallPrices(
+    val usd: String? = null,
+    @SerialName("usd_foil") val usdFoil: String? = null,
 )

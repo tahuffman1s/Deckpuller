@@ -100,6 +100,11 @@ class DefaultDeckRepository @Inject constructor(
             ).data.firstOrNull()?.colorIdentity.orEmpty()
         }.getOrDefault(emptyList())
 
+    override suspend fun prices(scryfallIds: List<String>): Map<String, Double?> =
+        runCatching {
+            fetchScryfall(scryfallIds).mapValues { (_, dto) -> dto.prices?.usd?.toDoubleOrNull() }
+        }.getOrDefault(emptyMap())
+
     private suspend fun fetchScryfall(uids: List<String>): Map<String, ScryfallCardDto> =
         uids.distinct()
             .chunked(SCRYFALL_BATCH)
