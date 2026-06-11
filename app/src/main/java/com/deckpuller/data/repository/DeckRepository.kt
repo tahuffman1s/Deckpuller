@@ -24,4 +24,10 @@ interface DeckRepository {
 
     /** List a user's public Archidekt decks by exact username. */
     suspend fun searchDecks(username: String): List<DeckSummary>
+
+    /**
+     * The Scryfall colour identity (e.g. `["G", "U"]`) for a single card, used to theme
+     * the pull screen from the commander. Returns empty for colourless or on any failure.
+     */
+    suspend fun colorIdentity(scryfallId: String): List<String>
 }

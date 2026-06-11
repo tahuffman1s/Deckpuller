@@ -40,6 +40,7 @@ class ImportViewModelTest {
         override suspend fun deleteDeck(deckId: Long) {}
         override suspend fun setPulled(cardId: Long, pulled: Int) {}
         override suspend fun searchDecks(username: String): List<DeckSummary> = summaries
+        override suspend fun colorIdentity(scryfallId: String): List<String> = emptyList()
     }
 
     private fun prefs(name: String? = null): UserPreferences = mockk(relaxed = true) {

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
@@ -44,10 +42,8 @@ import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
@@ -99,6 +95,7 @@ fun PullRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val commanderColors by viewModel.commanderColors.collectAsStateWithLifecycle()
     var celebrationDismissed by remember { mutableStateOf(false) }
     // Re-arm the celebration whenever the deck drops back to incomplete, so re-completing
     // (e.g. after a reset or refresh) celebrates again instead of only once per screen.
@@ -107,20 +104,23 @@ fun PullRoute(
     }
 
     state?.let { pull ->
-        PullScreen(
-            state = pull,
-            isRefreshing = isRefreshing,
-            onIncrement = viewModel::increment,
-            onDecrement = viewModel::decrement,
-            onSearchChange = viewModel::onSearchChange,
-            onFilterToggle = viewModel::onFilterToggle,
-            onClearFilters = viewModel::onClearFilters,
-            onRefresh = viewModel::refresh,
-            onReset = viewModel::reset,
-            onBack = onBack,
-            onCelebrationFinished = { celebrationDismissed = true },
-            showCelebration = pull.isComplete && !celebrationDismissed,
-        )
+        // Recolour the whole screen from the commander's colour identity.
+        CommanderColorTheme(colors = commanderColors) {
+            PullScreen(
+                state = pull,
+                isRefreshing = isRefreshing,
+                onIncrement = viewModel::increment,
+                onDecrement = viewModel::decrement,
+                onSearchChange = viewModel::onSearchChange,
+                onFilterToggle = viewModel::onFilterToggle,
+                onClearFilters = viewModel::onClearFilters,
+                onRefresh = viewModel::refresh,
+                onReset = viewModel::reset,
+                onBack = onBack,
+                onCelebrationFinished = { celebrationDismissed = true },
+                showCelebration = pull.isComplete && !celebrationDismissed,
+            )
+        }
     }
 }
 
@@ -194,6 +194,19 @@ fun PullScreen(
             // A pull-to-refresh also scrolls the list, but shouldn't summon the bubble.
             (listState.isScrollInProgress && !suppressScrollBubble && !isRefreshing)
         )
+    // The bubble's letter and position are frozen while it's hidden, so the fade-out
+    // after lifting off the rail doesn't visibly jump to the scroll position/letter —
+    // it just fades where it sat. They only refresh while the bubble is actually shown.
+    var bubbleScrubbing by remember { mutableStateOf(false) }
+    var bubbleFraction by remember { mutableStateOf(0.28f) }
+    var renderedLetter by remember { mutableStateOf(bubbleLetter) }
+    LaunchedEffect(showLetterBubble, scrub, bubbleLetter) {
+        if (showLetterBubble) {
+            bubbleScrubbing = scrub != null
+            bubbleFraction = scrub?.fraction ?: 0.28f
+            renderedLetter = bubbleLetter
+        }
+    }
     val density = LocalDensity.current
 
     Scaffold(
@@ -210,11 +223,6 @@ fun PullScreen(
         },
         topBar = {
             TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back to decks")
-                    }
-                },
                 title = {
                     if (searching) {
                         CompactSearchField(
@@ -284,12 +292,6 @@ fun PullScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
-                // Slim progress bar pinned to the top, replacing the bulky header block.
-                LinearProgressIndicator(
-                    progress = { if (state.total == 0) 0f else state.pulled.toFloat() / state.total },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth().height(4.dp),
-                )
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val areaHeightPx = constraints.maxHeight
                     val areaWidthPx = constraints.maxWidth
@@ -329,28 +331,26 @@ fun PullScreen(
                                         onDecrement = onDecrement,
                                         onImageClick = { zoomedCard = it },
                                     )
-                                    HorizontalDivider()
                                 }
                             }
                         }
                     }
                     LetterBubbleOverlay(
                         visible = showLetterBubble,
-                        letter = bubbleLetter,
+                        letter = renderedLetter,
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .offset {
-                                val scrubbing = scrub != null
                                 // While scrubbing, sit just inside the left rail and track
                                 // the thumb; while flinging, centre over the list and hover
-                                // just above the middle of the screen.
-                                val xPx = if (scrubbing) {
+                                // just above the middle of the screen. Uses the frozen
+                                // values so the exit fade doesn't jump.
+                                val xPx = if (bubbleScrubbing) {
                                     with(density) { 48.dp.toPx() }
                                 } else {
                                     (areaWidthPx - bubbleSizePx) / 2f
                                 }
-                                val fraction = scrub?.fraction ?: 0.28f
-                                val yPx = (fraction * areaHeightPx - bubbleSizePx / 2f)
+                                val yPx = (bubbleFraction * areaHeightPx - bubbleSizePx / 2f)
                                     .toInt()
                                     .coerceIn(0, (areaHeightPx - bubbleSizePx).toInt().coerceAtLeast(0))
                                 IntOffset(xPx.toInt().coerceAtLeast(0), yPx)

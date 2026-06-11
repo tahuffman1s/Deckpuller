@@ -42,6 +42,7 @@ class PullViewModelTest {
         override suspend fun deleteDeck(deckId: Long) {}
         override suspend fun setPulled(cardId: Long, pulled: Int) {}
         override suspend fun searchDecks(username: String): List<DeckSummary> = emptyList()
+        override suspend fun colorIdentity(scryfallId: String): List<String> = emptyList()
     }
 
     private fun vm(repo: DeckRepository) =
