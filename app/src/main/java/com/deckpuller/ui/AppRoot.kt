@@ -18,6 +18,7 @@ import com.deckpuller.ui.importdeck.ImportViewModel
 import com.deckpuller.ui.collection.CollectionRoute
 import com.deckpuller.ui.pull.PullRoute
 import com.deckpuller.ui.settings.SettingsRoute
+import com.deckpuller.ui.shopping.ShoppingListRoute
 import com.deckpuller.ui.update.UpdateGate
 
 private const val DECK_LIST = "deckList"
@@ -25,6 +26,7 @@ private const val ADD_DECK = "addDeck"
 private const val PULL = "pull"
 private const val SETTINGS = "settings"
 private const val COLLECTION = "collection"
+private const val SHOPPING = "shopping"
 
 @Composable
 fun AppRoot() {
@@ -82,10 +84,19 @@ fun AppRoot() {
         composable(
             route = "$PULL/{deckId}",
             arguments = listOf(navArgument("deckId") { type = NavType.LongType }),
-        ) {
+        ) { backStackEntry ->
+            val deckId = backStackEntry.arguments?.getLong("deckId") ?: 0L
             PullRoute(
                 onBack = { navController.popBackStack() },
+                onShoppingList = { navController.navigate("$SHOPPING/$deckId") },
             )
+        }
+
+        composable(
+            route = "$SHOPPING/{deckId}",
+            arguments = listOf(navArgument("deckId") { type = NavType.LongType }),
+        ) {
+            ShoppingListRoute(onBack = { navController.popBackStack() })
         }
     }
 

@@ -42,6 +42,7 @@ class PullScreenTest {
                 onIncrement = {}, onDecrement = {}, onSearchChange = {},
                 onFilterToggle = {}, onClearFilters = {},
                 onRefresh = {}, onReset = { reset = true }, onBack = {},
+                onShoppingList = {},
                 onCelebrationFinished = {},
             )
         }
@@ -61,6 +62,7 @@ class PullScreenTest {
                 onIncrement = {}, onDecrement = {}, onSearchChange = { typed = it },
                 onFilterToggle = {}, onClearFilters = {},
                 onRefresh = {}, onReset = {}, onBack = {},
+                onShoppingList = {},
                 onCelebrationFinished = {},
             )
         }
@@ -79,6 +81,7 @@ class PullScreenTest {
                 onIncrement = {}, onDecrement = {}, onSearchChange = {},
                 onFilterToggle = { toggled = it }, onClearFilters = {},
                 onRefresh = {}, onReset = {}, onBack = {},
+                onShoppingList = {},
                 onCelebrationFinished = {},
             )
         }

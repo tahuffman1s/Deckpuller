@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,6 +92,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PullRoute(
     onBack: () -> Unit,
+    onShoppingList: () -> Unit,
     viewModel: PullViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -117,6 +119,7 @@ fun PullRoute(
                 onRefresh = viewModel::refresh,
                 onReset = viewModel::reset,
                 onBack = onBack,
+                onShoppingList = onShoppingList,
                 onCelebrationFinished = { celebrationDismissed = true },
                 showCelebration = pull.isComplete && !celebrationDismissed,
             )
@@ -137,6 +140,7 @@ fun PullScreen(
     onRefresh: () -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
+    onShoppingList: () -> Unit,
     onCelebrationFinished: () -> Unit,
     showCelebration: Boolean = false,
     modifier: Modifier = Modifier,
@@ -284,6 +288,9 @@ fun PullScreen(
                         }
                         IconButton(onClick = { searching = true }) {
                             Icon(Icons.Filled.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = onShoppingList) {
+                            Icon(Icons.Default.ShoppingCart, contentDescription = "Buy missing cards")
                         }
                     }
                 },
