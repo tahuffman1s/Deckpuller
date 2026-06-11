@@ -758,11 +758,12 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
                     .aspectRatio(CARD_RATIO)
-                    .graphicsLayer {
-                        rotationY = yaw
-                        rotationX = pitch
-                        cameraDistance = 16f * density
-                    }
+                    // The drag lives on this stationary footprint, never on the rotated visual
+                    // below. A graphicsLayer transform also foreshortens a node's touch area, so
+                    // were the gesture on the spinning layer the target would collapse to a sliver
+                    // as the card turns edge-on near 90° — the finger slips off mid-turn, which is
+                    // why only a fast flick used to flip it. A flat, full-size target lets a slow,
+                    // natural drag accumulate yaw smoothly all the way around.
                     .pointerInput(Unit) {
                         // On release, spring the tilt flat and snap yaw to the nearest face.
                         val settle: () -> Unit = {
@@ -783,6 +784,15 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                             yaw += drag.x / w * YAW_PER_WIDTH
                             pitch = (pitch - drag.y / h * 60f).coerceIn(-MAX_PITCH_DEGREES, MAX_PITCH_DEGREES)
                         }
+                    },
+            ) {
+              Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationY = yaw
+                        rotationX = pitch
+                        cameraDistance = 16f * density
                     },
             ) {
                 if (showBack) {
@@ -813,6 +823,7 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                             .then(foil),
                     )
                 }
+              }
             }
         }
     }
