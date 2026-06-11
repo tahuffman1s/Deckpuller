@@ -16,11 +16,13 @@ import com.deckpuller.ui.importdeck.AddDeckScreen
 import com.deckpuller.ui.importdeck.ImportUiState
 import com.deckpuller.ui.importdeck.ImportViewModel
 import com.deckpuller.ui.pull.PullRoute
+import com.deckpuller.ui.settings.SettingsRoute
 import com.deckpuller.ui.update.UpdateGate
 
 private const val DECK_LIST = "deckList"
 private const val ADD_DECK = "addDeck"
 private const val PULL = "pull"
+private const val SETTINGS = "settings"
 
 @Composable
 fun AppRoot() {
@@ -35,7 +37,12 @@ fun AppRoot() {
                 onDeckClick = { id: Long -> navController.navigate("$PULL/$id") },
                 onAddDeck = { navController.navigate(ADD_DECK) },
                 onDeleteDeck = viewModel::delete,
+                onSettings = { navController.navigate(SETTINGS) },
             )
+        }
+
+        composable(SETTINGS) {
+            SettingsRoute(onBack = { navController.popBackStack() })
         }
 
         composable(ADD_DECK) {

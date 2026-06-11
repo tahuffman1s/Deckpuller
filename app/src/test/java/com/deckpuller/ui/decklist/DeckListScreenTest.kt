@@ -42,4 +42,20 @@ class DeckListScreenTest {
         rule.onNodeWithContentDescription("Add deck").performClick()
         assertEquals(true, added)
     }
+
+    @Test
+    fun `settings action fires callback`() {
+        var settings = false
+        rule.setContent {
+            DeckListScreen(
+                decks = emptyList(),
+                onDeckClick = {},
+                onAddDeck = {},
+                onDeleteDeck = {},
+                onSettings = { settings = true },
+            )
+        }
+        rule.onNodeWithContentDescription("Settings").performClick()
+        assertEquals(true, settings)
+    }
 }
