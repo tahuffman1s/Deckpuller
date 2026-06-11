@@ -1,6 +1,9 @@
 package com.deckpuller.data.remote
 
+import com.deckpuller.data.remote.dto.ArchidektCardDetailDto
+import com.deckpuller.data.remote.dto.ArchidektCardDto
 import com.deckpuller.data.remote.dto.ArchidektDeckDto
+import com.deckpuller.data.remote.dto.ArchidektOracleCardDto
 import com.deckpuller.data.remote.dto.ScryfallCollectionResponse
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -20,7 +23,7 @@ class DtoParsingTest {
           "private": false,
           "cards": [
             {
-              "id": 1, "quantity": 4, "modifier": "Normal",
+              "id": 1, "quantity": 4, "modifier": "Normal", "categories": ["Ramp"],
               "card": {
                 "id": 9, "uid": "abc-123", "rarity": "common",
                 "oracleCard": { "name": "Llanowar Elves", "types": ["Creature"] }
@@ -37,6 +40,24 @@ class DtoParsingTest {
         assertEquals(4, deck.cards[0].quantity)
         assertEquals("abc-123", deck.cards[0].card.uid)
         assertEquals("Llanowar Elves", deck.cards[0].card.oracleCard.name)
+        assertEquals("Ramp", deck.cards[0].categoryLabel())
+    }
+
+    @Test
+    fun `categoryLabel joins multiple and is null when empty`() {
+        val multi = ArchidektCardDto(
+            quantity = 1,
+            categories = listOf("Removal", "Instant-speed"),
+            card = ArchidektCardDetailDto("uid", ArchidektOracleCardDto("Swords")),
+        )
+        assertEquals("Removal, Instant-speed", multi.categoryLabel())
+
+        val none = ArchidektCardDto(
+            quantity = 1,
+            categories = emptyList(),
+            card = ArchidektCardDetailDto("uid", ArchidektOracleCardDto("Forest")),
+        )
+        assertNull(none.categoryLabel())
     }
 
     @Test

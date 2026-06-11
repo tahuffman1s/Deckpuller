@@ -18,4 +18,5 @@ fun CardEntity.toDomain(): DeckCard = DeckCard(
     imageUrl = imageUrl,
     requiredQty = requiredQty,
     pulledQty = pulledQty,
+    category = category,
 )

@@ -46,10 +46,12 @@ class DefaultDeckRepositoryTest {
     @After
     fun tearDown() = db.close()
 
-    private fun archidektCard(uid: String, name: String, qty: Int) = ArchidektCardDto(
-        quantity = qty,
-        card = ArchidektCardDetailDto(uid = uid, oracleCard = ArchidektOracleCardDto(name)),
-    )
+    private fun archidektCard(uid: String, name: String, qty: Int, categories: List<String> = emptyList()) =
+        ArchidektCardDto(
+            quantity = qty,
+            categories = categories,
+            card = ArchidektCardDetailDto(uid = uid, oracleCard = ArchidektOracleCardDto(name)),
+        )
 
     private fun scryfallCard(id: String, name: String, type: String) = ScryfallCardDto(
         id = id, name = name, typeLine = type,
@@ -79,7 +81,7 @@ class DefaultDeckRepositoryTest {
     @Test
     fun `importDeck stores deck with archidektId and returns its id`() = runTest {
         val archidekt = FakeArchidektApi(deck = {
-            ArchidektDeckDto("Test Deck", listOf(archidektCard("uid-1", "Forest", 4)))
+            ArchidektDeckDto("Test Deck", listOf(archidektCard("uid-1", "Forest", 4, categories = listOf("Ramp"))))
         })
         val r = repo(archidekt, { ScryfallCollectionResponse(listOf(scryfallCard("uid-1", "Forest", "Land"))) })
 
@@ -88,6 +90,7 @@ class DefaultDeckRepositoryTest {
         val deck = r.observeDeck(id).first()!!
         assertEquals("Test Deck", deck.name)
         assertEquals(4, deck.cards.single().requiredQty)
+        assertEquals("Ramp", deck.cards.single().category)
         assertTrue(prefetched.contains("uid-1-n.jpg"))
     }
 

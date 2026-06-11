@@ -11,8 +11,15 @@ data class ArchidektDeckDto(
 @Serializable
 data class ArchidektCardDto(
     val quantity: Int,
+    val categories: List<String> = emptyList(),
     val card: ArchidektCardDetailDto,
-)
+) {
+    /** Archidekt deck categories joined for display (e.g. "Removal"), or null. */
+    fun categoryLabel(): String? = categories
+        .filter { it.isNotBlank() }
+        .joinToString(", ")
+        .ifBlank { null }
+}
 
 @Serializable
 data class ArchidektCardDetailDto(

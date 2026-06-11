@@ -113,6 +113,7 @@ class DefaultDeckRepository @Inject constructor(
         scryfallId = entry.card.uid,
         name = scryfall?.name ?: entry.card.oracleCard.name,
         typeLine = scryfall?.bestTypeLine() ?: "Unknown",
+        category = entry.categoryLabel().orEmpty(),
         imageUrl = scryfall?.bestImageUrl(),
         requiredQty = entry.quantity,
         pulledQty = pulled,
