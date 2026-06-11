@@ -3,12 +3,15 @@ package com.deckpuller.ui.pull
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,30 +27,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -59,18 +65,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -79,6 +88,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -102,7 +112,8 @@ fun PullRoute(
             onIncrement = viewModel::increment,
             onDecrement = viewModel::decrement,
             onSearchChange = viewModel::onSearchChange,
-            onFilterChange = viewModel::onFilterChange,
+            onFilterToggle = viewModel::onFilterToggle,
+            onClearFilters = viewModel::onClearFilters,
             onRefresh = viewModel::refresh,
             onReset = viewModel::reset,
             onBack = onBack,
@@ -120,7 +131,8 @@ fun PullScreen(
     onIncrement: (DeckCard) -> Unit,
     onDecrement: (DeckCard) -> Unit,
     onSearchChange: (String) -> Unit,
-    onFilterChange: (String?) -> Unit,
+    onFilterToggle: (String) -> Unit,
+    onClearFilters: () -> Unit,
     onRefresh: () -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
@@ -148,8 +160,8 @@ fun PullScreen(
     val alphabetIndex = remember(state.cards) { buildAlphabetIndex(state.cards) }
 
     // Floating letter indicator: while scrubbing the rail it tracks the letter and
-    // vertical position under the thumb; while the list flings it shows the first
-    // visible card's initial, centered.
+    // vertical position under the thumb; while the list flings on its own it shows the
+    // first visible card's initial, hovering just above centre.
     var scrub by remember { mutableStateOf<RailScrub?>(null) }
     val scrollLetter by remember(state.cards) {
         derivedStateOf {
@@ -157,20 +169,36 @@ fun PullScreen(
                 ?.name?.firstOrNull()?.uppercaseChar()?.takeIf { it.isLetter() } ?: '#'
         }
     }
+    // After a scrub ends the list keeps settling (a programmatic scroll), which would
+    // otherwise flash the centred scroll-bubble — making it "pop up in the middle" of
+    // the rail. Suppress the scroll-driven bubble from the moment a scrub begins until
+    // the list comes fully to rest.
+    var suppressScrollBubble by remember { mutableStateOf(false) }
+    LaunchedEffect(scrub != null) {
+        if (scrub != null) {
+            suppressScrollBubble = true
+        } else {
+            snapshotFlow { listState.isScrollInProgress }.first { !it }
+            suppressScrollBubble = false
+        }
+    }
     val bubbleLetter = scrub?.letter ?: scrollLetter
-    val showLetterBubble = alphabetIndex.isNotEmpty() &&
-        (scrub != null || listState.isScrollInProgress)
+    val showLetterBubble = alphabetIndex.isNotEmpty() && (
+        scrub != null ||
+            // A pull-to-refresh also scrolls the list, but shouldn't summon the bubble.
+            (listState.isScrollInProgress && !suppressScrollBubble && !isRefreshing)
+        )
     val density = LocalDensity.current
 
     Scaffold(
         modifier = modifier,
-        floatingActionButtonPosition = FabPosition.Start,
+        floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
             if (!searching) {
                 ActionsFab(
                     onFilter = { showFilterDialog = true },
                     onReset = { showResetDialog = true },
-                    filterActive = state.activeFilter != null,
+                    activeFilterCount = state.activeFilters.size,
                 )
             }
         },
@@ -183,41 +211,51 @@ fun PullScreen(
                 },
                 title = {
                     if (searching) {
-                        TextField(
-                            value = state.searchQuery,
-                            onValueChange = onSearchChange,
-                            singleLine = true,
-                            placeholder = { Text("Search cards") },
-                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                            shape = RoundedCornerShape(28.dp),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(searchFocus)
-                                .semantics { contentDescription = "Search field" },
+                        CompactSearchField(
+                            query = state.searchQuery,
+                            onSearchChange = onSearchChange,
+                            focusRequester = searchFocus,
                         )
                     } else {
-                        // Condensed: deck name with the pull count/percent tucked underneath.
+                        // Condensed: commander art + deck name with the pull count/percent
+                        // tucked underneath. A spinner sits by the title while refreshing.
                         val pct = if (state.total == 0) 0 else (state.pulled * 100 / state.total)
-                        Column {
-                            Text(
-                                state.deckName,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = if (isRefreshing) "Refreshing…"
-                                else "${state.pulled} / ${state.total} · $pct%",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            state.commander?.let { commander ->
+                                AsyncImage(
+                                    model = commander.imageUrl,
+                                    contentDescription = "Commander: ${commander.name}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(width = 30.dp, height = 42.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .clickable { zoomedCard = commander },
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                                Text(
+                                    state.deckName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = if (isRefreshing) "Refreshing…"
+                                    else "${state.pulled} / ${state.total} · $pct%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (isRefreshing) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
                         }
                     }
                 },
@@ -245,11 +283,28 @@ fun PullScreen(
                 )
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val areaHeightPx = constraints.maxHeight
+                    val areaWidthPx = constraints.maxWidth
                     val bubbleSizePx = with(density) { 64.dp.toPx() }
                     Row(modifier = Modifier.fillMaxSize()) {
+                        // Rail on the LEFT edge; the list fills the rest to its right.
+                        if (alphabetIndex.isNotEmpty()) {
+                            AlphabetRail(
+                                enabled = alphabetIndex.keys,
+                                onSelect = { letter ->
+                                    alphabetIndex[letter]?.let { index ->
+                                        scope.launch { listState.scrollToItem(index) }
+                                    }
+                                },
+                                onScrubChange = { scrub = it },
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
                         PullToRefreshBox(
                             isRefreshing = isRefreshing,
                             onRefresh = onRefresh,
+                            // The refresh feedback lives by the title now, so hide the
+                            // default drop-down indicator.
+                            indicator = {},
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         ) {
                             LazyColumn(
@@ -269,32 +324,27 @@ fun PullScreen(
                                 }
                             }
                         }
-                        if (alphabetIndex.isNotEmpty()) {
-                            AlphabetRail(
-                                enabled = alphabetIndex.keys,
-                                onSelect = { letter ->
-                                    alphabetIndex[letter]?.let { index ->
-                                        scope.launch { listState.scrollToItem(index) }
-                                    }
-                                },
-                                onScrubChange = { scrub = it },
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
-                        }
                     }
                     LetterBubbleOverlay(
                         visible = showLetterBubble,
                         letter = bubbleLetter,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 48.dp)
+                            .align(Alignment.TopStart)
                             .offset {
-                                // Follow the thumb while scrubbing; otherwise sit centered.
-                                val fraction = scrub?.fraction ?: 0.5f
-                                val y = (fraction * areaHeightPx - bubbleSizePx / 2f)
+                                val scrubbing = scrub != null
+                                // While scrubbing, sit just inside the left rail and track
+                                // the thumb; while flinging, centre over the list and hover
+                                // just above the middle of the screen.
+                                val xPx = if (scrubbing) {
+                                    with(density) { 48.dp.toPx() }
+                                } else {
+                                    (areaWidthPx - bubbleSizePx) / 2f
+                                }
+                                val fraction = scrub?.fraction ?: 0.42f
+                                val yPx = (fraction * areaHeightPx - bubbleSizePx / 2f)
                                     .toInt()
                                     .coerceIn(0, (areaHeightPx - bubbleSizePx).toInt().coerceAtLeast(0))
-                                IntOffset(0, y)
+                                IntOffset(xPx.toInt().coerceAtLeast(0), yPx)
                             },
                     )
                 }
@@ -323,8 +373,9 @@ fun PullScreen(
     if (showFilterDialog) {
         FilterDialog(
             subtitles = state.subtitles,
-            active = state.activeFilter,
-            onSelect = { onFilterChange(it); showFilterDialog = false },
+            active = state.activeFilters,
+            onToggle = onFilterToggle,
+            onClear = onClearFilters,
             onDismiss = { showFilterDialog = false },
         )
     }
@@ -334,44 +385,67 @@ fun PullScreen(
     }
 }
 
-/** Lets the user filter the list to a single subtitle (Archidekt category / type line). */
+/**
+ * Multi-select category filter shown as wrap-around chips. A card is kept if it matches
+ * ANY selected category; with nothing selected, every card shows. Tapping a chip toggles
+ * it, "Clear all" resets, and the header keeps a running tally so the state is obvious.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FilterDialog(
     subtitles: List<String>,
-    active: String?,
-    onSelect: (String?) -> Unit,
+    active: Set<String>,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filter by category") },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                FilterOption(label = "All cards", selected = active == null) { onSelect(null) }
-                subtitles.forEach { subtitle ->
-                    FilterOption(label = subtitle, selected = active == subtitle) { onSelect(subtitle) }
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = if (active.isEmpty()) "Showing all cards"
+                    else "Showing ${active.size} of ${subtitles.size} categories",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    subtitles.forEach { subtitle ->
+                        val selected = subtitle in active
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onToggle(subtitle) },
+                            label = { Text(subtitle) },
+                            leadingIcon = if (selected) {
+                                {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                    )
+                                }
+                            } else null,
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+        dismissButton = {
+            if (active.isNotEmpty()) {
+                TextButton(onClick = onClear) { Text("Clear all") }
+            }
         },
     )
-}
-
-@Composable
-private fun FilterOption(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-    }
 }
 
 /** Expandable speed-dial FAB holding the deck actions (filter, reset). */
@@ -379,18 +453,18 @@ private fun FilterOption(label: String, selected: Boolean, onClick: () -> Unit) 
 private fun ActionsFab(
     onFilter: () -> Unit,
     onReset: () -> Unit,
-    filterActive: Boolean,
+    activeFilterCount: Int,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    // Left-anchored speed dial, so the FAB and its labels read outward from the left edge.
+    // Right-anchored speed dial, so the FAB and its labels read inward from the right edge.
     Column(
-        horizontalAlignment = Alignment.Start,
+        horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (expanded) {
             MiniAction(
-                label = if (filterActive) "Filter (on)" else "Filter",
+                label = if (activeFilterCount > 0) "Filter ($activeFilterCount)" else "Filter",
                 icon = Icons.Filled.FilterList,
             ) { expanded = false; onFilter() }
             MiniAction("Reset progress", Icons.Filled.RestartAlt) { expanded = false; onReset() }
@@ -406,15 +480,12 @@ private fun ActionsFab(
 
 @Composable
 private fun MiniAction(label: String, icon: ImageVector, onClick: () -> Unit) {
-    // FAB-then-label so a left-anchored dial reads naturally rightward.
+    // Label-then-FAB so a right-anchored dial reads naturally inward (leftward).
     Row(
         modifier = Modifier.clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SmallFloatingActionButton(onClick = onClick) {
-            Icon(icon, contentDescription = label)
-        }
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -426,6 +497,63 @@ private fun MiniAction(label: String, icon: ImageVector, onClick: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
+        SmallFloatingActionButton(onClick = onClick) {
+            Icon(icon, contentDescription = label)
+        }
+    }
+}
+
+/**
+ * A shorter, pill-shaped single-line search field for the top bar. Built on
+ * BasicTextField + DecorationBox so its height can be trimmed below the default
+ * 56dp Material text-field height.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompactSearchField(
+    query: String,
+    onSearchChange: (String) -> Unit,
+    focusRequester: FocusRequester,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    BasicTextField(
+        value = query,
+        onValueChange = onSearchChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        interactionSource = interaction,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .semantics { contentDescription = "Search field" },
+    ) { inner ->
+        TextFieldDefaults.DecorationBox(
+            value = query,
+            innerTextField = inner,
+            enabled = true,
+            singleLine = true,
+            visualTransformation = VisualTransformation.None,
+            interactionSource = interaction,
+            placeholder = { Text("Search cards") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            shape = RoundedCornerShape(28.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+            ),
+            // Trim the vertical padding so the field is noticeably shorter than the
+            // default Material text field.
+            contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(
+                top = 4.dp,
+                bottom = 4.dp,
+            ),
+        )
     }
 }
 

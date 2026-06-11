@@ -1,6 +1,8 @@
 package com.deckpuller.ui.pull
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -48,10 +50,11 @@ fun buildAlphabetIndex(cards: List<DeckCard>): Map<Char, Int> {
 }
 
 /**
- * Vertical alphabet index on the screen edge. Touch or drag a letter to jump;
+ * Vertical alphabet index on the LEFT screen edge. Touch or drag a letter to jump;
  * letters with no cards are dimmed and ignored. As your finger moves, the letter
- * under it and its neighbours magnify and bulge toward the list — the fisheye
- * scrubber popularised by Niagara Launcher.
+ * under it and its neighbours magnify and bulge rightward toward the list — the
+ * fisheye scrubber popularised by Niagara Launcher, here with an exaggerated,
+ * springy falloff for a more dramatic feel.
  */
 @Composable
 fun AlphabetRail(
@@ -70,7 +73,7 @@ fun AlphabetRail(
         modifier = modifier
             .fillMaxHeight()
             .width(40.dp)
-            .padding(end = 4.dp)
+            .padding(start = 4.dp)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     var last: Char? = null
@@ -108,27 +111,47 @@ fun AlphabetRail(
         ALPHABET.forEachIndexed { i, letter ->
             val active = letter in enabled
             val focused = activeIndex == i
-            // Distance from the finger drives a fisheye falloff over the nearest few letters.
+            // Distance from the finger drives an exaggerated fisheye falloff over the
+            // nearest several letters for a dramatic bulge.
             val distance = activeIndex?.let { abs(it - i) } ?: Int.MAX_VALUE
             val targetScale = when {
                 activeIndex == null -> 1f
-                distance == 0 -> 2.2f
-                distance == 1 -> 1.7f
-                distance == 2 -> 1.35f
-                distance == 3 -> 1.12f
+                distance == 0 -> 3.0f
+                distance == 1 -> 2.1f
+                distance == 2 -> 1.55f
+                distance == 3 -> 1.25f
+                distance == 4 -> 1.08f
                 else -> 1f
             }
-            // Magnified letters lean left, toward the list, so the active one stands proud.
+            // Magnified letters lean right, toward the list (the rail now lives on the
+            // left edge), so the active one bulges proudly over the cards.
             val targetShift = when {
                 activeIndex == null -> 0f
-                distance == 0 -> -26f
-                distance == 1 -> -16f
-                distance == 2 -> -8f
-                distance == 3 -> -3f
+                distance == 0 -> 40f
+                distance == 1 -> 26f
+                distance == 2 -> 14f
+                distance == 3 -> 6f
+                distance == 4 -> 2f
                 else -> 0f
             }
-            val scale by animateFloatAsState(targetScale, label = "alphabetScale")
-            val shift by animateFloatAsState(targetShift, label = "alphabetShift")
+            // A bouncy spring makes the magnification snap and overshoot — far livelier
+            // than a plain tween.
+            val scale by animateFloatAsState(
+                targetScale,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+                label = "alphabetScale",
+            )
+            val shift by animateFloatAsState(
+                targetShift,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+                label = "alphabetShift",
+            )
 
             Text(
                 text = letter.toString(),
@@ -143,8 +166,9 @@ fun AlphabetRail(
                     scaleX = scale
                     scaleY = scale
                     translationX = shift
-                    // Grow from the right edge so the rail stays pinned and bulges inward.
-                    transformOrigin = TransformOrigin(1f, 0.5f)
+                    // Grow from the left edge so the rail stays pinned and bulges inward
+                    // toward the list on the right.
+                    transformOrigin = TransformOrigin(0f, 0.5f)
                 },
             )
         }
