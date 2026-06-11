@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -31,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -170,25 +171,33 @@ fun CardRow(
 
 @Composable
 private fun OwnershipBadge(card: DeckCard) {
-    val (label, bg) = if (card.isOwned) {
-        "Owned${if (card.ownedQty > card.requiredQty) " (${card.ownedQty})" else ""}" to Color(0xFF2E7D32)
-    } else {
-        "Missing" to Color(0xFFB26A00)
+    // A themed checkmark (owned) / cross (missing) tucked under the progress bar on the
+    // right, with the owned count beside it — no "have:" label, no set codes.
+    val tint = if (card.isOwned) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.error
+    val count = card.ownedPrintings.takeIf { it.isNotEmpty() }?.joinToString(" · ") {
+        "${it.quantity}×${if (it.finish != "normal") " (${it.finish})" else ""}"
     }
-    Text(
-        text = label,
-        color = Color.White,
+    Row(
         modifier = Modifier
-            .padding(top = 2.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(bg)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    )
-    val detail = card.ownedPrintings.takeIf { it.isNotEmpty() }?.joinToString(" · ") {
-        "${it.quantity}× ${it.setCode}${if (it.finish != "normal") " (${it.finish})" else ""}"
-    }
-    if (detail != null) {
-        Text("have: $detail", modifier = Modifier.padding(top = 2.dp))
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (count != null) {
+            Text(
+                text = count,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            imageVector = if (card.isOwned) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+            contentDescription = if (card.isOwned) "Owned" else "Missing",
+            tint = tint,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 

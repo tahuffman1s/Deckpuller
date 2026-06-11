@@ -17,7 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -26,16 +26,24 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deckpuller.domain.StoreCartLinks
+import com.deckpuller.ui.common.CardImageDialog
+import com.deckpuller.ui.common.CardThumbnail
+import com.deckpuller.ui.common.scryfallImageUrl
 import kotlinx.coroutines.launch
 
 @Composable
@@ -53,6 +61,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     val items = state?.buyItems().orEmpty()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var zoomedItem by remember { mutableStateOf<ShoppingItem?>(null) }
 
     fun open(url: String) {
         try {
@@ -104,14 +113,42 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
 
             LazyColumn(Modifier.fillMaxSize()) {
                 items(state.items, key = { "${it.scryfallId}|${it.name}" }) { item ->
-                    ListItem(
-                        headlineContent = { Text("${item.need}× ${item.name}") },
-                        trailingContent = {
-                            Text(item.unitPrice?.let { "$${"%.2f".format(it * item.need)}" } ?: "—")
-                        },
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CardThumbnail(
+                            imageUrl = scryfallImageUrl(item.scryfallId),
+                            contentDescription = item.name,
+                            onClick = { zoomedItem = item },
+                        )
+                        Text(
+                            text = "${item.need}× ${item.name}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = item.unitPrice?.let { "$${"%.2f".format(it * item.need)}" } ?: "—",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
+    }
+
+    zoomedItem?.let { item ->
+        CardImageDialog(
+            imageUrl = scryfallImageUrl(item.scryfallId, version = "normal"),
+            name = item.name,
+            onDismiss = { zoomedItem = null },
+        )
     }
 }
