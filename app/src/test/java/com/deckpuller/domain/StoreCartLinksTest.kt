@@ -28,6 +28,17 @@ class StoreCartLinksTest {
     fun `card kingdom builder url points at the builder with the list`() {
         val url = StoreCartLinks.cardKingdomUrl(items)
         assertTrue(url.startsWith("https://www.cardkingdom.com/builder"))
+        assertTrue(url.contains("?c="))
+        assertTrue(url.contains("1%20Sol%20Ring%7C%7C2%20Rhystic%20Study"))
+    }
+
+    @Test
+    fun `encodes double-faced and apostrophe card names safely`() {
+        val dfc = listOf(StoreCartLinks.BuyItem("Conqueror's Galleon // Conqueror's Foothold", 1))
+        val url = StoreCartLinks.tcgPlayerUrl(dfc)
+        // apostrophe -> %27, space -> %20, "//" -> %2F%2F, no raw spaces/quotes leak into the URL
+        assertTrue(url.contains("Conqueror%27s%20Galleon%20%2F%2F%20Conqueror%27s%20Foothold"))
+        assertTrue(!url.contains(" "))
     }
 
     @Test
