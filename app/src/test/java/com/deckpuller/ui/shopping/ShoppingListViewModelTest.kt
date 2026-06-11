@@ -51,7 +51,7 @@ class ShoppingListViewModelTest {
         val vm = ShoppingListViewModel(deckRepo, collectionRepo, SavedStateHandle(mapOf("deckId" to 1L)))
         vm.state.test {
             var s = awaitItem()
-            while (s == null || s.items.isEmpty()) s = awaitItem()
+            while (s == null || s.items.isEmpty() || s.items.first().unitPrice == null) s = awaitItem()
             assertEquals(1, s.items.size)
             assertEquals("Rhystic Study", s.items.single().name)
             assertEquals(1, s.items.single().need)

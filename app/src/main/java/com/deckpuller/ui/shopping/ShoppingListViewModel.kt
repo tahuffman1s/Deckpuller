@@ -7,6 +7,8 @@ import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.DeckRepository
 import com.deckpuller.domain.CardName
 import com.deckpuller.domain.StoreCartLinks
+import com.deckpuller.domain.model.DeckCard
+import com.deckpuller.domain.model.OwnedInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,8 +55,7 @@ class ShoppingListViewModel @Inject constructor(
         ) { deck, owned, priceMap ->
             deck?.let {
                 val missing = it.cards.mapNotNull { card ->
-                    val ownedQty = owned[CardName.normalize(card.name)]?.totalQty ?: 0
-                    val need = card.requiredQty - ownedQty
+                    val need = needFor(card, owned)
                     if (need <= 0) null
                     else ShoppingItem(
                         name = card.name,
@@ -75,12 +76,16 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch { loadPrices() }
     }
 
+    /** Number still needed for [card] given the owned map (0 if fully owned). */
+    private fun needFor(card: DeckCard, owned: Map<String, OwnedInfo>): Int =
+        (card.requiredQty - (owned[CardName.normalize(card.name)]?.totalQty ?: 0)).coerceAtLeast(0)
+
     /** Fetch Scryfall prices for the MISSING cards' scryfallIds. */
     private suspend fun loadPrices() {
         val deck = deckRepository.observeDeck(deckId).first() ?: return
         val owned = collectionRepository.observeOwnedByName().first()
         val missingIds = deck.cards
-            .filter { card -> card.requiredQty - (owned[CardName.normalize(card.name)]?.totalQty ?: 0) > 0 }
+            .filter { card -> needFor(card, owned) > 0 }
             .map { it.scryfallId }
         prices.value = deckRepository.prices(missingIds)
     }
