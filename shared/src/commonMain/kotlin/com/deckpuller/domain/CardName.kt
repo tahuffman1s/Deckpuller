@@ -1,11 +1,15 @@
 package com.deckpuller.domain
 
-import java.text.Normalizer
+/**
+ * Strips diacritics via Unicode NFKD decomposition + combining-mark removal. This is the one
+ * platform-bound step of [CardName.normalize]: the JVM uses java.text.Normalizer + the `\p{Mn}`
+ * regex (Unicode-property classes aren't reliable on Kotlin/Native), so it's an expect/actual.
+ */
+internal expect fun deaccentNfkd(raw: String): String
 
 /** Canonical key for matching card names across Scryfall (deck) and ManaBox (collection). */
 object CardName {
 
-    private val combiningMarks = Regex("\\p{Mn}+")
     private val whitespace = Regex("\\s+")
     // Any "/" run, optionally space-padded, becomes the canonical " // " separator.
     // A single bare "/" is INTENTIONALLY treated as a DFC/split separator: external sources
@@ -14,9 +18,7 @@ object CardName {
     private val faceSeparator = Regex("\\s*/+\\s*")
 
     fun normalize(raw: String): String {
-        val deaccented = Normalizer.normalize(raw, Normalizer.Form.NFKD)
-            .replace(combiningMarks, "")
-        return deaccented
+        return deaccentNfkd(raw)
             .replace(faceSeparator, " // ")
             // Whitespace collapse MUST run after faceSeparator replacement so it does not
             // destroy the single spaces injected around "//".

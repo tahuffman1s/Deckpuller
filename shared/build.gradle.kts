@@ -24,6 +24,11 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.datastore.preferences.core)
+            // Networking + serialization are multiplatform; the OkHttp *engine* stays android-only.
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
@@ -46,12 +51,8 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
 
-            implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.json)
             implementation(libs.okhttp)
-            implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.android)
 
             implementation(libs.coil.compose)

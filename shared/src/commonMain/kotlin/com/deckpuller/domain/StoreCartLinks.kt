@@ -1,6 +1,6 @@
 package com.deckpuller.domain
 
-import java.net.URLEncoder
+import io.ktor.http.encodeURLParameter
 
 /** Builds bulk-add web links and clipboard text for buying a list of cards. */
 object StoreCartLinks {
@@ -29,6 +29,7 @@ object StoreCartLinks {
         return if (url.length <= MAX_URL_LENGTH) url else base
     }
 
-    private fun encode(value: String): String =
-        URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+    // Ktor's encodeURLParameter percent-encodes for a query-parameter value: space -> %20,
+    // '|' -> %7C, ''' -> %27, '/' -> %2F (matches the old URLEncoder(+->%20) behavior, common-safe).
+    private fun encode(value: String): String = value.encodeURLParameter()
 }
