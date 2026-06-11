@@ -2,6 +2,36 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+---
+
+## EXECUTION LOG (branch `ios-port-kmp`, started 2026-06-11)
+
+Resolved real versions (knowledge cutoff was behind): **Kotlin 2.2.20 · CMP 1.9.3 · KSP 2.2.20-2.0.4 · AGP 8.11.2 · Gradle 8.13 · compileSdk/targetSdk 36 · Koin 4.2.1 · Ktor 3.5.0 · Robolectric 4.16.1**. Baseline = **99 tests**, green after every step.
+
+**Key deviations from the written plan (all sound, end-state identical):**
+1. **Hilt→Koin (Task 2.1) was pulled BEFORE the module restructure.** Reason: Hilt's Gradle plugin + KSP don't work in a `kotlin-multiplatform` module, so "park Hilt in androidMain" (plan Task 1.4) is unworkable. Koin is pure-runtime and moves cleanly.
+2. **Stack modernized (AGP 8.7.2→8.11.2, Gradle→8.13, SDK 35→36, Robolectric 4.14→4.16.1).** Forced by Koin 4.2.1 requiring androidx.activity 1.12.4 (needs compileSdk 36); chose to modernize rather than carry a fragile `force()` downgrade. KSP pinned to KSP1 (`ksp.useKSP2=false` in gradle.properties) — KSP2 trips on Room/Hilt processors under Kotlin 2.2.
+3. **Phase 1 put ALL code in `androidMain` (not the commonMain split of plan Task 1.3).** Reason: a grep proved ZERO files are commonMain-ready pre-swap (every file imports an android-only lib). `commonMain` promotion now happens per-file DURING the Phase 2 library swaps. `:shared` namespace is `com.deckpuller.shared` (R-collision avoidance); `:androidApp` stays `com.deckpuller`.
+
+**DONE (committed, all green):**
+- [x] Phase 0 — branch + baseline (99 tests)
+- [x] Task 1.1 — Kotlin/CMP/KSP bump + KMP/CMP plugins in catalog
+- [x] Task 2.1 — Hilt→Koin (`di/AppModule.kt`; `koinViewModel()`; startKoin guarded for Robolectric) + stack modernization
+- [x] Phase 1 (Tasks 1.2–1.5) — split `:app` → `:shared` (KMP android-library, android target only) + `:androidApp` launcher
+- [x] Task 2.2 — Retrofit/OkHttp → Ktor 3.5.0 (APIs now concrete classes over HttpClient; tests use Ktor MockEngine). okhttp kept for UpdateManager's release download.
+
+**REMAINING on Linux (files still in `androidMain`):**
+- [ ] Task 2.3 — Room → Room KMP (2.8.4, bundled SQLite driver, `RoomDatabaseConstructor`/`expect`-builder). PRESERVE db name `deckpuller.db` + MIGRATION_2_3/3_4.
+- [ ] Task 2.4 — DataStore → datastore-preferences-core (KMP); keep file name `user_prefs`.
+- [ ] Task 2.5 — Coil 2 → Coil 3.5.0 (all AsyncImage sites + `CardBitmap.loadCardBitmap`).
+- [ ] Task 2.6 — konfetti → custom Compose confetti.
+- [ ] Task 2.7 — navigation-compose → JetBrains KMP nav fork.
+- [ ] **commonMain promotion + apply `compose-multiplatform` plugin** (drop the androidx compose-BOM in `:shared`, switch to `compose.*` deps, move platform-free UI/data/domain to `commonMain`). HIGHEST RISK — best done as one focused step, ideally alongside iOS-target setup. This subsumes plan Task 1.3's intent.
+
+**REMAINING needs macOS/CI (Phases 3–4):** unchanged — `expect`/`actual` (haptics, CoreMotion tilt, UIDocumentPicker, share, self-update no-op) then the CI-build + SideStore sideload flow.
+
+---
+
 **Goal:** Ship an iOS build of DeckPuller with the same GUI and feature set as the Android app (minus the in-app self-updater, which iOS forbids) by migrating the existing Kotlin/Jetpack-Compose code to Compose Multiplatform (KMP).
 
 **Architecture:** Restructure the single Android `:app` module into a KMP `:shared` module (holding all UI, view models, domain, data) plus thin platform launchers (`:androidApp`, `iosApp`). ~49 of 61 source files are pure Compose/Kotlin and move to `commonMain` essentially untouched. The ~12 files touching Android framework APIs are split: library-backed ones (Room, DataStore, Coil, networking, DI) swap to KMP-capable libraries; truly platform-specific ones (haptics, device-tilt sensor, file import, share sheet) become `expect`/`actual` declarations with Android + iOS implementations. The Android build must stay green at every step so the live app never regresses.
