@@ -44,4 +44,10 @@ class CardNameTest {
     fun `blank in blank out`() {
         assertEquals("", CardName.normalize("   "))
     }
+
+    @Test
+    fun `already normalised name is unchanged`() {
+        val key = "sol ring"
+        assertEquals(key, CardName.normalize(key))
+    }
 }
