@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -70,6 +72,23 @@ class PullViewModel @Inject constructor(
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * The commander's Scryfall colour identity, fetched once whenever the commander
+     * changes. Drives the pull screen's colour theme. Empty for colourless / no commander.
+     */
+    val commanderColors: StateFlow<List<String>> =
+        repository.observeDeck(deckId)
+            .map { deck ->
+                deck?.cards?.firstOrNull { it.category.contains("Commander", ignoreCase = true) }
+                    ?.scryfallId
+            }
+            .distinctUntilChanged()
+            .map { scryfallId ->
+                if (scryfallId.isNullOrBlank()) emptyList()
+                else repository.colorIdentity(scryfallId)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun onSearchChange(value: String) { query.value = value }
 

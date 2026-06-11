@@ -133,6 +133,8 @@ fun CardRow(
                 color = if (card.isComplete) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.secondary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                // Drop the trailing stop-indicator dot that M3 draws by default.
+                drawStopIndicator = {},
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 6.dp)

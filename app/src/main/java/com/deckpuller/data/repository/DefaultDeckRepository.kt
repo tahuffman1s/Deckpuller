@@ -93,6 +93,13 @@ class DefaultDeckRepository @Inject constructor(
             )
         }
 
+    override suspend fun colorIdentity(scryfallId: String): List<String> =
+        runCatching {
+            scryfallApi.getCollection(
+                ScryfallCollectionRequest(listOf(ScryfallIdentifier(scryfallId))),
+            ).data.firstOrNull()?.colorIdentity.orEmpty()
+        }.getOrDefault(emptyList())
+
     private suspend fun fetchScryfall(uids: List<String>): Map<String, ScryfallCardDto> =
         uids.distinct()
             .chunked(SCRYFALL_BATCH)

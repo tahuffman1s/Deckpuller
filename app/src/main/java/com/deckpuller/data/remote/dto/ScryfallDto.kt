@@ -24,6 +24,7 @@ data class ScryfallCardDto(
     val id: String,
     val name: String,
     @SerialName("type_line") val typeLine: String? = null,
+    @SerialName("color_identity") val colorIdentity: List<String> = emptyList(),
     @SerialName("image_uris") val imageUris: ScryfallImageUris? = null,
     @SerialName("card_faces") val cardFaces: List<ScryfallCardFaceDto> = emptyList(),
 ) {
