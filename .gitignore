@@ -43,3 +43,7 @@ google-services.json
 # Stray extracted library artifacts accidentally unpacked into the repo root
 /META-INF/
 /retrofit2/
+
+# Signing secrets — NEVER commit these
+*signing-credentials*
+*.b64
