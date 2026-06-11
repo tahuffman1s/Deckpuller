@@ -83,6 +83,7 @@ fun UpdateGate(viewModel: UpdateViewModel = hiltViewModel()) {
             confirmButton = { TextButton(onClick = viewModel::dismiss) { Text("OK") } },
         )
 
-        UpdateStatus.Idle -> Unit
+        // The launch-time gate stays silent for these; Settings shows them inline.
+        UpdateStatus.Idle, UpdateStatus.Checking, UpdateStatus.UpToDate -> Unit
     }
 }

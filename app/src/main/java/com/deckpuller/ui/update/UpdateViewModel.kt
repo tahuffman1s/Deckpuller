@@ -13,6 +13,8 @@ import javax.inject.Inject
 
 sealed interface UpdateStatus {
     data object Idle : UpdateStatus
+    data object Checking : UpdateStatus
+    data object UpToDate : UpdateStatus
     data class Available(val info: UpdateInfo) : UpdateStatus
     data class Downloading(val progress: Float) : UpdateStatus
     data object Installing : UpdateStatus
@@ -29,6 +31,9 @@ class UpdateViewModel @Inject constructor(
 
     private var alreadyChecked = false
 
+    /** The installed app version (e.g. "1.0.0"), for display in Settings. */
+    val currentVersion: String get() = updateManager.currentVersionName
+
     /** Checks once per process; stays silent unless a newer release exists. */
     fun checkOnce() {
         if (alreadyChecked) return
@@ -39,6 +44,24 @@ class UpdateViewModel @Inject constructor(
                     if (info != null) _status.value = UpdateStatus.Available(info)
                 }
             // Network errors / up-to-date are intentionally silent — no nagging.
+        }
+    }
+
+    /** Explicit, user-initiated check that surfaces every outcome (for Settings). */
+    fun checkNow() {
+        alreadyChecked = true
+        viewModelScope.launch {
+            _status.value = UpdateStatus.Checking
+            runCatching { updateManager.checkForUpdate() }
+                .onSuccess { info ->
+                    _status.value =
+                        if (info != null) UpdateStatus.Available(info) else UpdateStatus.UpToDate
+                }
+                .onFailure {
+                    _status.value = UpdateStatus.Error(
+                        it.message ?: "Couldn't check for updates. Check your connection.",
+                    )
+                }
         }
     }
 
