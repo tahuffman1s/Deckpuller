@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -57,6 +58,7 @@ fun CardRow(
     onIncrement: (DeckCard) -> Unit,
     onDecrement: (DeckCard) -> Unit,
     onImageClick: (DeckCard) -> Unit = {},
+    collectionPresent: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Read the latest card/callback inside the long-running gesture coroutine so a
@@ -144,6 +146,9 @@ fun CardRow(
                         contentDescription = "${card.pulledQty} of ${card.requiredQty} pulled"
                     },
             )
+            if (collectionPresent) {
+                OwnershipBadge(card)
+            }
         }
         // Hold − to repeat-decrement, hold + to repeat-increment (tap = one step).
         HoldRepeatButton(
@@ -160,6 +165,30 @@ fun CardRow(
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
         }
+    }
+}
+
+@Composable
+private fun OwnershipBadge(card: DeckCard) {
+    val (label, bg) = if (card.isOwned) {
+        "Owned${if (card.ownedQty > card.requiredQty) " (${card.ownedQty})" else ""}" to Color(0xFF2E7D32)
+    } else {
+        "Missing" to Color(0xFFB26A00)
+    }
+    Text(
+        text = label,
+        color = Color.White,
+        modifier = Modifier
+            .padding(top = 2.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(bg)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+    val detail = card.ownedPrintings.takeIf { it.isNotEmpty() }?.joinToString(" · ") {
+        "${it.quantity}× ${it.setCode}${if (it.finish != "normal") " (${it.finish})" else ""}"
+    }
+    if (detail != null) {
+        Text("have: $detail", modifier = Modifier.padding(top = 2.dp))
     }
 }
 

@@ -29,6 +29,7 @@ data class PullUiState(
     val commander: DeckCard? = null,
     val ownedCards: Int = 0,
     val ownedTotalCards: Int = 0,
+    val collectionPresent: Boolean = false,
 ) {
     val isComplete: Boolean get() = total > 0 && pulled == total
 }
@@ -83,6 +84,7 @@ class PullViewModel @Inject constructor(
                     },
                     ownedCards = enriched.count { card -> card.ownedQty >= card.requiredQty },
                     ownedTotalCards = enriched.size,
+                    collectionPresent = owned.isNotEmpty(),
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

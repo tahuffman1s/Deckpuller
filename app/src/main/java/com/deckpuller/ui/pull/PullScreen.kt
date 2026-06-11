@@ -330,6 +330,7 @@ fun PullScreen(
                                         onIncrement = onIncrement,
                                         onDecrement = onDecrement,
                                         onImageClick = { zoomedCard = it },
+                                        collectionPresent = state.collectionPresent,
                                     )
                                 }
                             }
