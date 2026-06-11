@@ -20,19 +20,35 @@ import com.deckpuller.ui.importdeck.ImportViewModel
 import com.deckpuller.ui.pull.PullViewModel
 import com.deckpuller.ui.shopping.ShoppingListViewModel
 import com.deckpuller.ui.update.UpdateViewModel
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.http.HttpHeaders
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 val appModule = module {
 
     single { Json { ignoreUnknownKeys = true } }
 
+    single {
+        HttpClient(OkHttp) {
+            install(ContentNegotiation) {
+                json(get())
+            }
+            install(DefaultRequest) {
+                headers.append(HttpHeaders.UserAgent, "DeckPuller/1.0")
+                headers.append(HttpHeaders.Accept, "application/json")
+            }
+        }
+    }
+
+    // OkHttp client used by UpdateManager for GitHub release downloads/redirects.
     single {
         OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -45,23 +61,8 @@ val appModule = module {
             .build()
     }
 
-    single<ArchidektApi> {
-        Retrofit.Builder()
-            .baseUrl("https://archidekt.com/api/")
-            .client(get())
-            .addConverterFactory(get<Json>().asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(ArchidektApi::class.java)
-    }
-
-    single<ScryfallApi> {
-        Retrofit.Builder()
-            .baseUrl("https://api.scryfall.com/")
-            .client(get())
-            .addConverterFactory(get<Json>().asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(ScryfallApi::class.java)
-    }
+    single { ArchidektApi(get()) }
+    single { ScryfallApi(get()) }
 
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "deckpuller.db")

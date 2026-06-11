@@ -36,10 +36,11 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.room.ktx)
 
-            implementation(libs.retrofit)
-            implementation(libs.retrofit.serialization)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
             implementation(libs.okhttp)
-            implementation(libs.okhttp.logging)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.android)
 
@@ -54,6 +55,7 @@ kotlin {
             implementation(libs.room.testing)
             implementation(libs.turbine)
             implementation("io.mockk:mockk:1.13.13")
+            implementation(libs.ktor.client.mock)
             implementation(project.dependencies.platform(libs.compose.bom))
             implementation(libs.compose.ui.test.junit4)
             // Robolectric-based Compose UI tests need the empty ComponentActivity
