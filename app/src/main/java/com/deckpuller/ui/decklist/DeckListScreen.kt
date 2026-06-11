@@ -2,6 +2,7 @@ package com.deckpuller.ui.decklist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -27,6 +28,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,9 +41,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,6 +100,8 @@ fun DeckListScreen(
 
 @Composable
 private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Unit) {
+    var zoomed by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -97,6 +111,7 @@ private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Uni
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         val placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+        val hasArt = deck.commanderImageUrl != null
         AsyncImage(
             model = deck.commanderImageUrl,
             contentDescription = "Commander",
@@ -107,7 +122,9 @@ private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Uni
             modifier = Modifier
                 .size(width = 48.dp, height = 64.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                // Tapping the commander art zooms it, just like in the deck's card list.
+                .then(if (hasArt) Modifier.clickable { zoomed = true } else Modifier),
         )
 
         // Name + count + progress, vertically centered between art and menu.
@@ -133,22 +150,110 @@ private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Uni
 
         DeckMenu(deckName = deck.name, onDelete = onDelete)
     }
+
+    if (zoomed && deck.commanderImageUrl != null) {
+        CommanderImageDialog(
+            imageUrl = deck.commanderImageUrl,
+            name = deck.name,
+            onDismiss = { zoomed = false },
+        )
+    }
 }
 
+/**
+ * Per-deck actions presented as a speed dial: tapping the kebab expands a stack of
+ * labelled, icon-bearing mini buttons above it — the same visual language as the
+ * pull screen's actions FAB.
+ */
 @Composable
 private fun DeckMenu(deckName: String, onDelete: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+
     Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "Options for $deckName")
+        IconButton(onClick = { expanded = !expanded }) {
+            Icon(
+                imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.MoreVert,
+                contentDescription = "Options for $deckName",
+            )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("Delete") },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
+        if (expanded) {
+            // Anchor the speed dial just above the kebab, right-aligned to it.
+            val positionProvider = remember {
+                object : PopupPositionProvider {
+                    override fun calculatePosition(
+                        anchorBounds: IntRect,
+                        windowSize: IntSize,
+                        layoutDirection: LayoutDirection,
+                        popupContentSize: IntSize,
+                    ): IntOffset = IntOffset(
+                        x = (anchorBounds.right - popupContentSize.width).coerceAtLeast(0),
+                        y = (anchorBounds.top - popupContentSize.height).coerceAtLeast(0),
+                    )
+                }
+            }
+            Popup(
+                popupPositionProvider = positionProvider,
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(8.dp),
+                ) {
+                    SpeedDialAction("Delete", Icons.Filled.Delete) {
+                        expanded = false
+                        onDelete()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeedDialAction(label: String, icon: ImageVector, onClick: () -> Unit) {
+    // Whole row is tappable so the label pill and the mini FAB both trigger the action.
+    Row(
+        modifier = Modifier.clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 2.dp,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+        SmallFloatingActionButton(onClick = onClick) {
+            Icon(icon, contentDescription = label)
+        }
+    }
+}
+
+@Composable
+private fun CommanderImageDialog(imageUrl: String, name: String, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
             )
         }
     }

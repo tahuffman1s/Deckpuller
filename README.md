@@ -29,7 +29,7 @@ Import a deck from [Archidekt](https://archidekt.com), then tap your way through
 Building a physical MTG deck from a list is tedious — you scan a decklist, hunt through binders, and lose your place. **DeckPuller** turns that into a tap-to-track checklist:
 
 - Pull a deck straight from **Archidekt** (paste a URL, or browse your own decks by username).
-- Cards are grouped by type and shown with their real art (via **Scryfall**).
+- Cards are shown in one flat A–Z list with their real art (via **Scryfall**).
 - Tap a card to mark one pulled; the progress bar and per-card counters update instantly.
 - Everything is saved locally, **per deck**, so you can stop and resume anytime.
 - Finish a deck and you get a little confetti moment. 🎉
@@ -45,7 +45,7 @@ Building a physical MTG deck from a list is tedious — you scan a decklist, hun
 </tr>
 <tr>
 <td><img src="docs/screenshots/01-decks.png" width="240" alt="Deck list with per-deck progress" /></td>
-<td><img src="docs/screenshots/02-pull.png" width="240" alt="Pull screen grouped by card type" /></td>
+<td><img src="docs/screenshots/02-pull.png" width="240" alt="Pull screen with flat A–Z card list" /></td>
 <td><img src="docs/screenshots/03-actions.png" width="240" alt="Speed-dial actions" /></td>
 </tr>
 </table>
@@ -56,14 +56,14 @@ Building a physical MTG deck from a list is tedious — you scan a decklist, hun
 - **📚 Multiple decks** — keep as many decks as you like, each with its own saved pull progress.
 - **🔗 Import from Archidekt** — paste a deck URL, or enter your Archidekt username and pick from your public decks (the username is remembered).
 - **🖼️ Real card images** — fetched and cached from Scryfall; tap any card to see it full-size.
-- **🗂️ Grouped & sorted** — cards are organized by type (Creatures, Instants, Lands, …) with sticky headers.
+- **🔤 Flat A–Z list** — one alphabetical list of every card, with a Niagara-style fisheye letter rail for fast scrolling.
 - **🔎 Search** — filter the current deck by card name; the keyboard pops up the moment you open it.
 - **🔄 Refresh** — re-sync a deck from Archidekt **without losing your pulled progress**.
 - **♻️ Reset** — zero-out a deck's progress (with a confirmation), ready for the next build.
 - **💾 Offline-friendly progress** — pull counts live in a local database and survive restarts.
 - **🎉 Completion celebration** — confetti when a deck hits 100%.
 - **🌙 Modern Material 3 UI** — edge-to-edge, dark-theme-first, with a speed-dial action button.
-- **⬆️ In-app auto-update** — checks GitHub Releases on launch and installs new versions for you ([details](docs/AUTO_UPDATE.md)).
+- **⬆️ In-app auto-update** — checks GitHub Releases on launch (via the rate-limit-free `releases/latest` redirect) and installs new versions for you ([details](docs/AUTO_UPDATE.md)).
 
 ## 🧭 How pulling works
 
@@ -82,7 +82,7 @@ DeckPuller is a single-module Android app following an MVVM + repository pattern
 | Layer | What's there |
 |-------|--------------|
 | **UI** | Jetpack Compose (Material 3), Navigation-Compose, screen-scoped `ViewModel`s exposing `StateFlow` |
-| **Domain** | Plain Kotlin models (`Deck`, `DeckCard`, `DeckSummary`), card-type classification & grouping |
+| **Domain** | Plain Kotlin models (`Deck`, `DeckCard`, `DeckSummary`) and version comparison |
 | **Data** | Repository over Retrofit APIs + a Room database; DataStore for preferences; Coil for images |
 
 **Built with:**
@@ -106,7 +106,7 @@ app/src/main/java/com/deckpuller/
 │   ├── repository/  # DeckRepository (import, refresh, reset, search…)
 │   ├── prefs/       # DataStore-backed UserPreferences
 │   └── image/       # Coil image prefetcher
-├── domain/          # Models, card-type classifier, grouping
+├── domain/          # Models, version comparison
 ├── ui/
 │   ├── decklist/    # "My Decks" home
 │   ├── importdeck/  # Add-deck (URL + username browse)

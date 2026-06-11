@@ -8,13 +8,21 @@ On launch, the app asks GitHub for the latest release and compares it to the
 installed version:
 
 ```
-GET https://api.github.com/repos/tahuffman1s/Deckpuller/releases/latest
+GET https://github.com/tahuffman1s/Deckpuller/releases/latest   (302 → .../releases/tag/<tag>)
 ```
 
-1. **Check** — `UpdateManager.checkForUpdate()` reads the latest release's
-   `tag_name` (e.g. `v1.2.0`) and its attached `*.apk` asset. If the tag is a
-   newer version than the installed one (see `VersionComparator`), it returns an
-   `UpdateInfo`; otherwise `null`. Network errors and "up to date" are silent.
+> **Why not `api.github.com`?** The REST API allows only **60 unauthenticated
+> requests per hour per source IP**. On carrier-grade NAT many phones share one
+> address, so that budget is regularly exhausted and the API returns **HTTP 403**.
+> The `releases/latest` *web* endpoint isn't rate-limited — it just 302-redirects
+> to the tagged release — so the updater reads the tag from the `Location` header
+> instead.
+
+1. **Check** — `UpdateManager.checkForUpdate()` issues a non-following request to
+   `releases/latest`, reads the redirect target's tag (e.g. `v1.2.0`), and derives
+   the APK URL from CI's stable asset name (`DeckPuller-<version>.apk`). If the tag
+   is a newer version than the installed one (see `VersionComparator`), it returns
+   an `UpdateInfo`; otherwise `null`. Network errors and "up to date" are silent.
 2. **Prompt** — `UpdateGate` (mounted in `AppRoot`, so it overlays any screen)
    shows an *"Update available"* dialog with the release notes.
 3. **Download** — on **Update**, the APK is streamed to `cacheDir/updates/` with a
@@ -26,7 +34,6 @@ GET https://api.github.com/repos/tahuffman1s/Deckpuller/releases/latest
 
 | Piece | File |
 |-------|------|
-| GitHub API + DTOs | `data/remote/GitHubApi.kt`, `data/remote/dto/GitHubDto.kt` |
 | Version compare (pure, unit-tested) | `domain/VersionComparator.kt` |
 | Check / download / install | `data/update/UpdateManager.kt` |
 | UI state machine | `ui/update/UpdateViewModel.kt` |
@@ -45,8 +52,8 @@ GET https://api.github.com/repos/tahuffman1s/Deckpuller/releases/latest
   `REQUEST_INSTALL_PACKAGES` permission (declared) plus the user granting
   "install unknown apps" to DeckPuller. The app detects this and sends the user
   to the right Settings screen if needed.
-- **Stable/full releases only.** Drafts and pre-releases are ignored; only the
-  `releases/latest` (latest full release) with an `.apk` asset is offered.
+- **Latest release only.** Whatever `releases/latest` points at (GitHub's own
+  "latest" pointer, which already excludes drafts and pre-releases) is offered.
 
 ## Releasing an update (what feeds the updater)
 
@@ -61,7 +68,7 @@ See `docs/RELEASING.md` for details.
 
 ## Testing notes
 
-- `VersionComparatorTest` and `GitHubDtoTest` cover the comparison and parsing
-  logic (pure JVM, no device needed).
+- `VersionComparatorTest` covers the version comparison logic (pure JVM, no
+  device needed).
 - The download/install path is device-only (system installer UI) and can't be
   unit-tested; verify it manually with two real releases (`vX` then `vX+1`).

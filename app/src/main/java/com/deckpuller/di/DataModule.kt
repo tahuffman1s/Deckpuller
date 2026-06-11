@@ -8,7 +8,6 @@ import com.deckpuller.data.image.ImagePrefetcher
 import com.deckpuller.data.local.AppDatabase
 import com.deckpuller.data.local.DeckDao
 import com.deckpuller.data.remote.ArchidektApi
-import com.deckpuller.data.remote.GitHubApi
 import com.deckpuller.data.remote.ScryfallApi
 import com.deckpuller.data.repository.DeckRepository
 import com.deckpuller.data.repository.DefaultDeckRepository
@@ -74,16 +73,6 @@ abstract class DataModule {
                 .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
                 .build()
                 .create(ScryfallApi::class.java)
-
-        @Provides
-        @Singleton
-        fun provideGitHubApi(okHttpClient: OkHttpClient, json: Json): GitHubApi =
-            Retrofit.Builder()
-                .baseUrl("https://api.github.com/")
-                .client(okHttpClient)
-                .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-                .build()
-                .create(GitHubApi::class.java)
 
         @Provides
         @Singleton

@@ -4,8 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deckpuller.data.repository.DeckRepository
-import com.deckpuller.domain.DeckGrouping
-import com.deckpuller.domain.model.CardGroup
 import com.deckpuller.domain.model.DeckCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +16,7 @@ import javax.inject.Inject
 
 data class PullUiState(
     val deckName: String,
-    val groups: List<CardGroup>,
+    val cards: List<DeckCard>,
     val pulled: Int,
     val total: Int,
     val searchQuery: String,
@@ -43,7 +41,8 @@ class PullViewModel @Inject constructor(
                     else it.cards.filter { card -> card.name.contains(q, ignoreCase = true) }
                 PullUiState(
                     deckName = it.name,
-                    groups = DeckGrouping.group(filtered),
+                    // One flat list, alphabetical by name (case-insensitive) — no type sections.
+                    cards = filtered.sortedBy { card -> card.name.lowercase() },
                     pulled = it.cards.sumOf { card -> card.pulledQty },
                     total = it.cards.sumOf { card -> card.requiredQty },
                     searchQuery = q,
