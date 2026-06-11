@@ -3,10 +3,15 @@ package com.deckpuller.ui.pull
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.deckpuller.data.local.entity.DeckWithCards
+import com.deckpuller.data.repository.CollectionRepository
+import com.deckpuller.data.repository.CollectionImportResult
 import com.deckpuller.data.repository.DeckRepository
+import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.domain.model.Deck
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.domain.model.DeckSummary
+import com.deckpuller.domain.model.OwnedInfo
+import com.deckpuller.domain.model.OwnedPrinting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +22,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -45,8 +51,19 @@ class PullViewModelTest {
         override suspend fun colorIdentity(scryfallId: String): List<String> = emptyList()
     }
 
-    private fun vm(repo: DeckRepository) =
-        PullViewModel(repo, SavedStateHandle(mapOf("deckId" to 7L)))
+    private class FakeCollectionRepo(
+        private val owned: Map<String, OwnedInfo> = emptyMap(),
+    ) : CollectionRepository {
+        override fun observeOwnedByName(): Flow<Map<String, OwnedInfo>> = flowOf(owned)
+        override fun observeAll(): Flow<List<CollectionCardEntity>> = flowOf(emptyList())
+        override val importedAt: Flow<Long?> = flowOf(null)
+        override val count: Flow<Int> = flowOf(0)
+        override suspend fun importCsv(csv: String, now: Long): CollectionImportResult =
+            CollectionImportResult(0, 0)
+    }
+
+    private fun vm(repo: DeckRepository, collectionRepo: CollectionRepository = FakeCollectionRepo()) =
+        PullViewModel(repo, collectionRepo, SavedStateHandle(mapOf("deckId" to 7L)))
 
     @Test
     fun `state exposes deck totals from the full deck`() = runTest {
@@ -90,5 +107,27 @@ class PullViewModelTest {
         model.refresh()
         assertEquals(true, repo.resetCalled)
         assertEquals(true, repo.refreshCalled)
+    }
+
+    @Test
+    fun `marks cards owned from the collection`() = runTest {
+        val deck = Deck("D", listOf(card("Sol Ring", 1, 0), card("Forest", 4, 0)))
+        val collectionRepo = FakeCollectionRepo(
+            mapOf(
+                "sol ring" to OwnedInfo(
+                    totalQty = 2,
+                    printings = listOf(OwnedPrinting("LTC", "normal", 2, "EDH")),
+                ),
+            ),
+        )
+        val model = vm(FakeRepo(deck), collectionRepo)
+        model.state.test {
+            var s = awaitItem()
+            while (s == null || s.cards.isEmpty()) s = awaitItem()
+            val sol = s.cards.first { it.name.equals("Sol Ring", ignoreCase = true) }
+            assertEquals(2, sol.ownedQty)
+            assertTrue(sol.isOwned)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }
