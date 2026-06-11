@@ -28,7 +28,7 @@ class DefaultCollectionRepository @Inject constructor(
                 OwnedInfo(
                     totalQty = group.sumOf { it.quantity },
                     printings = group.map {
-                        OwnedPrinting(it.setCode, it.finish, it.quantity, it.binderName)
+                        OwnedPrinting(it.setCode, it.finish, it.quantity, it.binderName, it.scryfallId)
                     },
                 )
             }

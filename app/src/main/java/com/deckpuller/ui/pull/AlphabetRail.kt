@@ -39,10 +39,14 @@ data class RailScrub(val letter: Char, val fraction: Float)
  * that initial, in display order. The list is now flat (no section headers), so
  * the index is simply the card's position. Non-letter initials collapse to '#'.
  */
-fun buildAlphabetIndex(cards: List<DeckCard>): Map<Char, Int> {
+fun buildAlphabetIndex(cards: List<DeckCard>): Map<Char, Int> =
+    buildAlphabetIndexFromNames(cards.map { it.name })
+
+/** Same as [buildAlphabetIndex] but driven by a plain list of names (collection, cart). */
+fun buildAlphabetIndexFromNames(names: List<String>): Map<Char, Int> {
     val map = LinkedHashMap<Char, Int>()
-    cards.forEachIndexed { index, card ->
-        val initial = card.name.firstOrNull()?.uppercaseChar()
+    names.forEachIndexed { index, name ->
+        val initial = name.firstOrNull()?.uppercaseChar()
             ?.takeIf { it.isLetter() } ?: '#'
         if (initial !in map) map[initial] = index
     }

@@ -131,4 +131,32 @@ class PullViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `owned card shows the most common owned printing's image`() = runTest {
+        val deck = Deck("D", listOf(card("Sol Ring", 1, 0)))
+        // Two owned printings: the foil "abcd…" with 1 copy and the normal "bcde…" with 3.
+        // The CDN url is built from the printing held in the greatest quantity (the normal).
+        val collectionRepo = FakeCollectionRepo(
+            mapOf(
+                "sol ring" to OwnedInfo(
+                    totalQty = 4,
+                    printings = listOf(
+                        OwnedPrinting("LTC", "foil", 1, "EDH", "abcd1234-0000-0000-0000-000000000000"),
+                        OwnedPrinting("C21", "normal", 3, "EDH", "bcde2345-0000-0000-0000-000000000000"),
+                    ),
+                ),
+            ),
+        )
+        vm(FakeRepo(deck), collectionRepo).state.test {
+            var s = awaitItem()
+            while (s == null || s.cards.isEmpty()) s = awaitItem()
+            val sol = s.cards.first { it.name.equals("Sol Ring", ignoreCase = true) }
+            assertEquals(
+                "https://cards.scryfall.io/normal/front/b/c/bcde2345-0000-0000-0000-000000000000.jpg",
+                sol.imageUrl,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

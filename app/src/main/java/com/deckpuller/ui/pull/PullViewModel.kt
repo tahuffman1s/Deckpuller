@@ -7,6 +7,8 @@ import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.DeckRepository
 import com.deckpuller.domain.CardName
 import com.deckpuller.domain.model.DeckCard
+import com.deckpuller.domain.model.OwnedPrinting
+import com.deckpuller.ui.common.scryfallImageUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,9 +61,19 @@ class PullViewModel @Inject constructor(
             deck?.let {
                 val enriched = it.cards.map { card ->
                     val info = owned[CardName.normalize(card.name)]
+                    // When the card is in the collection, prefer the printing the user
+                    // actually owns. With several printings, show the "common" one — the
+                    // one they hold the most copies of (ties favour the non-foil).
+                    val ownedImage = info?.printings
+                        ?.filter { p -> !p.scryfallId.isNullOrBlank() }
+                        ?.maxWithOrNull(
+                            compareBy({ p: OwnedPrinting -> p.quantity }, { p -> if (p.finish == "normal") 1 else 0 }),
+                        )
+                        ?.let { p -> scryfallImageUrl(p.scryfallId, version = "normal") }
                     card.copy(
                         ownedQty = info?.totalQty ?: 0,
                         ownedPrintings = info?.printings ?: emptyList(),
+                        imageUrl = ownedImage ?: card.imageUrl,
                     )
                 }
                 val byFilter = if (f.isEmpty()) enriched

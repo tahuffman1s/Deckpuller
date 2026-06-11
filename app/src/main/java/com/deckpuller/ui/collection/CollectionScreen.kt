@@ -3,21 +3,26 @@ package com.deckpuller.ui.collection
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -28,9 +33,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,7 +47,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.ui.common.CardImageDialog
 import com.deckpuller.ui.common.CardThumbnail
+import com.deckpuller.ui.common.CompactSearchField
+import com.deckpuller.ui.common.SpeedDialAction
+import com.deckpuller.ui.common.SpeedDialFab
 import com.deckpuller.ui.common.scryfallImageUrl
+import com.deckpuller.ui.pull.AlphabetRail
+import com.deckpuller.ui.pull.buildAlphabetIndexFromNames
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
@@ -70,11 +84,28 @@ fun CollectionScreen(
 ) {
     val snackbar = remember { SnackbarHostState() }
     var zoomedCard by remember { mutableStateOf<CollectionCardEntity?>(null) }
+    var searching by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) onImportUri(uri) }
 
+    fun launchPicker() {
+        // Accept any text-ish mime; ManaBox exports vary (text/csv, text/comma-separated-values).
+        picker.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "*/*"))
+    }
+
+    // Opening search jumps focus to the field and raises the keyboard automatically.
+    LaunchedEffect(searching) {
+        if (searching) {
+            searchFocus.requestFocus()
+            keyboard?.show()
+        }
+    }
     LaunchedEffect(importMessage) {
         importMessage?.let {
             snackbar.showSnackbar(it)
@@ -82,59 +113,111 @@ fun CollectionScreen(
         }
     }
 
+    val hasCollection = state.totalCount > 0
+    val alphabetIndex = remember(state.cards) { buildAlphabetIndexFromNames(state.cards.map { it.name }) }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = {
+            if (!searching) {
+                SpeedDialFab(
+                    actions = listOf(
+                        SpeedDialAction(
+                            label = "Import ManaBox CSV",
+                            onClick = ::launchPicker,
+                            icon = { Icon(Icons.Filled.FileUpload, contentDescription = "Import ManaBox CSV") },
+                        ),
+                    ),
+                    collapsedIcon = Icons.Filled.Add,
+                    collapsedDescription = "Import collection",
+                )
+            }
+        },
         topBar = {
             TopAppBar(
-                title = { Text("Collection") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                title = {
+                    if (searching) {
+                        CompactSearchField(
+                            query = state.searchQuery,
+                            onSearchChange = onSearchChange,
+                            focusRequester = searchFocus,
+                            placeholder = "Search collection",
+                        )
+                    } else {
+                        Column {
+                            Text("Collection", style = MaterialTheme.typography.titleMedium)
+                            if (hasCollection) {
+                                val when_ = state.importedAt?.let {
+                                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                                        .format(Date(it))
+                                } ?: "—"
+                                Text(
+                                    text = "${state.totalCount} cards · imported $when_",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    if (searching) {
+                        IconButton(onClick = { searching = false; onSearchChange("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close search")
+                        }
+                    } else if (hasCollection) {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search")
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            Button(
-                onClick = {
-                    // Accept any text-ish mime; ManaBox exports vary (text/csv, text/comma-separated-values).
-                    picker.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "*/*"))
-                },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            ) { Text("Import ManaBox CSV") }
-
-            if (state.totalCount > 0) {
-                val when_ = state.importedAt?.let {
-                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it))
-                } ?: "—"
-                Text("${state.totalCount} cards · imported $when_")
-            }
-
-            if (state.totalCount == 0) {
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            if (!hasCollection) {
                 Column(
-                    Modifier.fillMaxSize(),
+                    Modifier.fillMaxSize().padding(horizontal = 32.dp),
                     verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("No collection imported yet. Export a CSV from ManaBox and import it here.")
+                    Text(
+                        "No collection imported yet. Export a CSV from ManaBox and tap the " +
+                            "+ button to import it.",
+                    )
                 }
             } else {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = onSearchChange,
-                    label = { Text("Search collection") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                )
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(state.cards, key = { it.id }) { card ->
-                        val foil = if (card.finish != "normal") " · ${card.finish}" else ""
-                        CollectionCardRow(
-                            name = card.name,
-                            subtitle = "${card.quantity}× · ${card.setCode}$foil",
-                            imageUrl = scryfallImageUrl(card.scryfallId),
-                            onImageClick = { zoomedCard = card },
+                Row(Modifier.fillMaxSize()) {
+                    if (alphabetIndex.isNotEmpty()) {
+                        AlphabetRail(
+                            enabled = alphabetIndex.keys,
+                            onSelect = { letter ->
+                                alphabetIndex[letter]?.let { index ->
+                                    scope.launch { listState.scrollToItem(index) }
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
+                    }
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 96.dp),
+                    ) {
+                        items(state.cards, key = { it.id }) { card ->
+                            val foil = if (card.finish != "normal") " · ${card.finish}" else ""
+                            CollectionCardRow(
+                                name = card.name,
+                                subtitle = "${card.quantity}× · ${card.setCode}$foil",
+                                imageUrl = scryfallImageUrl(card.scryfallId),
+                                onImageClick = { zoomedCard = card },
+                            )
+                        }
                     }
                 }
             }

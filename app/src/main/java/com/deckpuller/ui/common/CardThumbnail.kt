@@ -21,13 +21,17 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 
 /**
- * Build a Scryfall card image URL from a card's Scryfall id. The API redirects this to
- * the actual image CDN, so Coil can load it directly — handy when we only persisted the
- * id (collection imports, shopping list) and never the full image URL.
+ * Build a Scryfall card image URL straight from a card's Scryfall id by addressing the
+ * image CDN directly (`cards.scryfall.io/<size>/front/<a>/<b>/<id>.jpg`). We deliberately
+ * avoid the `api.scryfall.com/cards/<id>?format=image` redirect: that endpoint is rate
+ * limited and loading a whole grid through it gets throttled (so images never appear),
+ * whereas the CDN is unmetered. Handy when we only persisted the id (collection imports,
+ * shopping list) and never the full image URL.
  */
-fun scryfallImageUrl(scryfallId: String?, version: String = "small"): String? =
-    scryfallId?.takeIf { it.isNotBlank() }
-        ?.let { "https://api.scryfall.com/cards/$it?format=image&version=$version" }
+fun scryfallImageUrl(scryfallId: String?, version: String = "small"): String? {
+    val id = scryfallId?.trim()?.lowercase()?.takeIf { it.length >= 2 } ?: return null
+    return "https://cards.scryfall.io/$version/front/${id[0]}/${id[1]}/$id.jpg"
+}
 
 /**
  * The little rounded card thumbnail used across the pull, collection and shopping screens.

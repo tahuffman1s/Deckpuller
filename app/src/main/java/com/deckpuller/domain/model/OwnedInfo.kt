@@ -6,6 +6,7 @@ data class OwnedPrinting(
     val finish: String,
     val quantity: Int,
     val binderName: String,
+    val scryfallId: String? = null,
 )
 
 /** Aggregated ownership for one card name (across all printings). */

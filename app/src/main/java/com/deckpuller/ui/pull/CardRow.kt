@@ -172,12 +172,11 @@ fun CardRow(
 @Composable
 private fun OwnershipBadge(card: DeckCard) {
     // A themed checkmark (owned) / cross (missing) tucked under the progress bar on the
-    // right, with the owned count beside it — no "have:" label, no set codes.
+    // right, with the total owned count beside it — summed across every printing, no
+    // per-set breakdown and no foil markers.
     val tint = if (card.isOwned) MaterialTheme.colorScheme.primary
     else MaterialTheme.colorScheme.error
-    val count = card.ownedPrintings.takeIf { it.isNotEmpty() }?.joinToString(" · ") {
-        "${it.quantity}×${if (it.finish != "normal") " (${it.finish})" else ""}"
-    }
+    val count = card.ownedQty.takeIf { it > 0 }?.let { "$it×" }
     Row(
         modifier = Modifier
             .fillMaxWidth()
