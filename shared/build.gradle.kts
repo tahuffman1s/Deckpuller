@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -31,12 +32,14 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.navigation.compose)
 
-            implementation(project.dependencies.platform(libs.compose.bom))
-            implementation(libs.compose.ui)
-            implementation(libs.compose.ui.graphics)
-            implementation(libs.compose.ui.tooling.preview)
-            implementation(libs.compose.material3)
-            implementation("androidx.compose.material:material-icons-extended")
+            // Compose via the org.jetbrains.compose plugin (compose.* DSL accessors auto-version
+            // to the composeMultiplatform release; android target resolves to androidx artifacts).
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.ui)
+            implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
+            implementation(compose.components.uiToolingPreview)
 
             implementation(libs.koin.core)
             implementation(libs.koin.android)
@@ -64,7 +67,6 @@ kotlin {
             implementation(libs.turbine)
             implementation("io.mockk:mockk:1.13.13")
             implementation(libs.ktor.client.mock)
-            implementation(project.dependencies.platform(libs.compose.bom))
             implementation(libs.compose.ui.test.junit4)
             // Robolectric-based Compose UI tests need the empty ComponentActivity
             // that ui-test-manifest contributes to the (debug) test manifest.
