@@ -1,7 +1,7 @@
 package com.deckpuller.ui.pull
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -70,6 +70,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -108,6 +109,7 @@ import com.deckpuller.ui.common.scryfallGenericCardBackUrl
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -242,6 +244,9 @@ fun PullScreen(
     }
     val density = LocalDensity.current
 
+    // The whole screen lives in this box so the deck-complete celebration can be layered
+    // above the Scaffold (and its top bar) and darken everything.
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         modifier = modifier,
         floatingActionButtonPosition = FabPosition.End,
@@ -424,20 +429,22 @@ fun PullScreen(
           shatteringCard?.let { shard ->
               CardShatterOverlay(shard = shard) { shatteringCard = null }
           }
-
-          if (showCelebration) {
-              // Banner + confetti first, then the Windows-95-Solitaire cascade on top: the
-              // commander spits out a stream of cards that bounce down the screen and burst.
-              CelebrationOverlay(
-                  onFinished = onCelebrationFinished,
-                  colors = celebrationColors,
-              )
-              DeckCompletionCascade(
-                  imageUrl = state.commander?.imageUrl,
-                  source = commanderBounds,
-              )
-          }
         }
+    }
+
+    if (showCelebration) {
+        // Layered above the Scaffold so the scrim darkens the entire screen, top bar
+        // included. Banner + confetti first, then the Solitaire cascade on top. It stays
+        // until the user taps anywhere to dismiss.
+        CelebrationOverlay(
+            onFinished = onCelebrationFinished,
+            colors = celebrationColors,
+        )
+        DeckCompletionCascade(
+            imageUrls = state.cards.mapNotNull { it.imageUrl },
+            source = commanderBounds,
+        )
+    }
     }
 
     if (showResetDialog) {
@@ -696,8 +703,13 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         val scope = rememberCoroutineScope()
-        val yaw = remember { Animatable(0f) }    // free-spinning; snaps to nearest face on release
-        val pitch = remember { Animatable(0f) }  // springs back to flat on release
+        // Drag writes these directly (synchronous and lossless — the canonical Compose drag
+        // pattern); release animates them home. Driving an Animatable via a launched snapTo
+        // per drag delta drops deltas under rapid input, so yaw never accumulates enough to
+        // flip past 90°.
+        var yaw by remember { mutableFloatStateOf(0f) }
+        var pitch by remember { mutableFloatStateOf(0f) }
+        var settleJob by remember { mutableStateOf<Job?>(null) }
         val springBack = spring<Float>(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow,
@@ -708,7 +720,7 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
         )
 
         // Which face points at us: the back is showing while yaw sits in the rear half-turn.
-        val norm = ((yaw.value % 360f) + 360f) % 360f
+        val norm = ((yaw % 360f) + 360f) % 360f
         val showBack = norm > 90f && norm < 270f
 
         val idleTransition = rememberInfiniteTransition(label = "foil-idle")
@@ -722,8 +734,8 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
             label = "foil-idle-sweep",
         )
         // Idle drift plus a slide that tracks how far the card is turned/tilted.
-        val sweep = idle + sin(yaw.value * PI.toFloat() / 180f) * 0.6f -
-            (pitch.value / MAX_PITCH_DEGREES) * 0.4f
+        val sweep = idle + sin(yaw * PI.toFloat() / 180f) * 0.6f -
+            (pitch / MAX_PITCH_DEGREES) * 0.4f
 
         // Back face: the real reverse of a double-faced card, falling back to the standard
         // Magic back when that 404s (single-faced cards have no real back).
@@ -747,33 +759,29 @@ private fun CardImageDialog(card: DeckCard, onDismiss: () -> Unit) {
                     .fillMaxWidth(0.82f)
                     .aspectRatio(CARD_RATIO)
                     .graphicsLayer {
-                        rotationY = yaw.value
-                        rotationX = pitch.value
+                        rotationY = yaw
+                        rotationX = pitch
                         cameraDistance = 16f * density
                     }
                     .pointerInput(Unit) {
+                        // On release, spring the tilt flat and snap yaw to the nearest face.
                         val settle: () -> Unit = {
-                            scope.launch { pitch.animateTo(0f, springBack) }
-                            scope.launch {
-                                yaw.animateTo((yaw.value / 180f).roundToInt() * 180f, snapFace)
+                            settleJob = scope.launch {
+                                launch { animate(pitch, 0f, animationSpec = springBack) { v, _ -> pitch = v } }
+                                val target = (yaw / 180f).roundToInt() * 180f
+                                animate(yaw, target, animationSpec = snapFace) { v, _ -> yaw = v }
                             }
                         }
                         detectDragGestures(
+                            onDragStart = { settleJob?.cancel() },
                             onDragEnd = settle,
                             onDragCancel = settle,
                         ) { change, drag ->
                             change.consume()
                             val w = size.width.toFloat().coerceAtLeast(1f)
                             val h = size.height.toFloat().coerceAtLeast(1f)
-                            // One coroutine, sequential snapTo: snapTo completes synchronously
-                            // and both read the latest value, so deltas accumulate cleanly.
-                            scope.launch {
-                                yaw.snapTo(yaw.value + drag.x / w * YAW_PER_WIDTH)
-                                pitch.snapTo(
-                                    (pitch.value - drag.y / h * 60f)
-                                        .coerceIn(-MAX_PITCH_DEGREES, MAX_PITCH_DEGREES),
-                                )
-                            }
+                            yaw += drag.x / w * YAW_PER_WIDTH
+                            pitch = (pitch - drag.y / h * 60f).coerceIn(-MAX_PITCH_DEGREES, MAX_PITCH_DEGREES)
                         }
                     },
             ) {

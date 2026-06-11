@@ -1,26 +1,27 @@
 package com.deckpuller.ui.pull
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import kotlinx.coroutines.delay
+import androidx.compose.ui.unit.dp
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.util.concurrent.TimeUnit
-
-private const val CELEBRATION_MS = 3500L
 
 /** A festive default for colourless commanders / unknown identities. */
 private val DEFAULT_CONFETTI = listOf(
@@ -28,22 +29,27 @@ private val DEFAULT_CONFETTI = listOf(
     Color(0xFF43A047), Color(0xFF8E24AA),
 )
 
+/**
+ * Full-screen deck-complete celebration: a dark scrim, a banner, and a confetti burst. It
+ * stays up until the user taps anywhere ([onFinished]) — the card cascade plays on top.
+ */
 @Composable
 fun CelebrationOverlay(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     colors: List<Color> = emptyList(),
 ) {
-    LaunchedEffect(Unit) {
-        delay(CELEBRATION_MS)
-        onFinished()
-    }
-
     val confettiColors = colors.ifEmpty { DEFAULT_CONFETTI }.map { it.toArgb() }
 
     Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f),
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onFinished,
+            ),
+        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Column(
@@ -54,6 +60,12 @@ fun CelebrationOverlay(
                     "Deck complete! 🎉",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
+                )
+                Text(
+                    "Tap anywhere to continue",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
             KonfettiView(

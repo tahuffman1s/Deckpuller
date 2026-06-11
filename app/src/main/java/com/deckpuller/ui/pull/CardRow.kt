@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -126,28 +127,21 @@ fun CardRow(
         } else {
             Modifier
         }
-        // Once a card is complete it's exploded away — the slot stays (so the row and its
-        // − button remain) but the little card vanishes. Hitting − drops it back below
-        // complete and the thumbnail returns.
-        if (card.isComplete) {
-            Box(modifier = Modifier.size(width = 46.dp, height = 64.dp))
-        } else {
-            AsyncImage(
-                model = card.imageUrl,
-                contentDescription = card.name,
-                contentScale = ContentScale.Crop,
-                placeholder = thumbnailPlaceholder,
-                error = thumbnailPlaceholder,
-                fallback = thumbnailPlaceholder,
-                modifier = Modifier
-                    .size(width = 46.dp, height = 64.dp)
-                    .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .then(foilShimmer)
-                    .clickable { onImageClick(card) },
-            )
-        }
+        AsyncImage(
+            model = card.imageUrl,
+            contentDescription = card.name,
+            contentScale = ContentScale.Crop,
+            placeholder = thumbnailPlaceholder,
+            error = thumbnailPlaceholder,
+            fallback = thumbnailPlaceholder,
+            modifier = Modifier
+                .size(width = 46.dp, height = 64.dp)
+                .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(foilShimmer)
+                .clickable { onImageClick(card) },
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = card.name,
@@ -157,14 +151,31 @@ fun CardRow(
                 overflow = TextOverflow.Ellipsis,
             )
             val subtitle = subtitleOf(card)
-            if (subtitle.isNotBlank() && subtitle != "Unknown") {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            val hasSubtitle = subtitle.isNotBlank() && subtitle != "Unknown"
+            // Category and (when a collection is loaded) the ownership check + count share
+            // one line — category on the left, ownership tucked to the right.
+            if (hasSubtitle || collectionPresent) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (hasSubtitle) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    if (collectionPresent) {
+                        OwnershipBadge(card)
+                    }
+                }
             }
             // Progress meter replaces the textual count.
             LinearProgressIndicator(
@@ -186,9 +197,6 @@ fun CardRow(
                         contentDescription = "${card.pulledQty} of ${card.requiredQty} pulled"
                     },
             )
-            if (collectionPresent) {
-                OwnershipBadge(card)
-            }
         }
         // Hold − to repeat-decrement, hold + to repeat-increment (tap = one step).
         HoldRepeatButton(
@@ -210,17 +218,14 @@ fun CardRow(
 
 @Composable
 private fun OwnershipBadge(card: DeckCard) {
-    // A themed checkmark (owned) / cross (missing) tucked under the progress bar on the
-    // right, with the total owned count beside it — summed across every printing, no
-    // per-set breakdown and no foil markers.
+    // A themed checkmark (owned) / cross (missing) with the total owned count beside it —
+    // summed across every printing, no per-set breakdown and no foil markers. Sits inline
+    // on the category line.
     val tint = if (card.isOwned) MaterialTheme.colorScheme.primary
     else MaterialTheme.colorScheme.error
     val count = card.ownedQty.takeIf { it > 0 }?.let { "$it×" }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (count != null) {
@@ -234,7 +239,7 @@ private fun OwnershipBadge(card: DeckCard) {
             imageVector = if (card.isOwned) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
             contentDescription = if (card.isOwned) "Owned" else "Missing",
             tint = tint,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }

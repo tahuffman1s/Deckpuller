@@ -25,6 +25,7 @@ import kotlin.random.Random
 
 private const val CASCADE_CARD_RATIO = 0.716f // standard Magic card width/height
 private const val CARD_COUNT = 18
+private const val MAX_DISTINCT_CARDS = 12 // cap decoded bitmaps to keep memory in check
 private const val LAUNCH_STAGGER_MS = 130f
 private const val CARD_LIFETIME_MS = 2100f
 private const val MAX_BOUNCES = 2
@@ -42,6 +43,7 @@ private class CascadeCard(
     var rotation: Float,
     val rotationVel: Float,
     val seed: Int,
+    val bitmapIndex: Int,
 ) {
     var bounces = 0
     var exploding = false
@@ -58,22 +60,25 @@ private class CascadeCard(
 private class Shard(val vx: Float, val vy: Float, val spin: Float)
 
 /**
- * A Windows-95-Solitaire-style winning flourish: the commander art ([imageUrl]) spits out a
- * stream of cards from [source] that arc down under gravity, ricochet off the floor and
- * walls, then burst into pieces. Physics are screen-relative so it reads the same on any
- * device. Renders nothing until the image loads (or if there's no commander). The caller
- * controls its lifetime by mounting/unmounting it (e.g. for the celebration's duration).
+ * A Windows-95-Solitaire-style winning flourish: a stream of the deck's cards ([imageUrls])
+ * spills out from [source] (the commander), arcs down under gravity, ricochets off the floor
+ * and walls, then bursts into pieces. Each falling card shows a different deck card. Physics
+ * are screen-relative so it reads the same on any device. Renders nothing until at least one
+ * image loads. The caller controls its lifetime by mounting/unmounting it.
  */
 @Composable
-fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
-    if (imageUrl == null) return
+fun DeckCompletionCascade(imageUrls: List<String>, source: Rect) {
+    if (imageUrls.isEmpty()) return
 
     val context = LocalContext.current
-    var bitmap by remember(imageUrl) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(imageUrl) {
-        bitmap = context.loadCardBitmap(imageUrl)
+    // A stable, bounded subset of the deck to rain down (keeps decode memory in check).
+    val urls = remember(imageUrls) { imageUrls.distinct().take(MAX_DISTINCT_CARDS) }
+    var bitmaps by remember(urls) { mutableStateOf<List<ImageBitmap>>(emptyList()) }
+    LaunchedEffect(urls) {
+        bitmaps = urls.mapNotNull { context.loadCardBitmap(it) }
     }
-    val bmp = bitmap ?: return
+    val loaded = bitmaps
+    if (loaded.isEmpty()) return
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val screenW = constraints.maxWidth.toFloat()
@@ -84,7 +89,7 @@ fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
         val cardW = cardH * CASCADE_CARD_RATIO
         val gravity = screenH * 2.2f
 
-        val cards = remember(bmp, screenW, screenH) {
+        val cards = remember(loaded, screenW, screenH) {
             val originX = if (source != Rect.Zero) source.center.x - cardW / 2f else screenW / 2f - cardW / 2f
             val originY = if (source != Rect.Zero) source.center.y - cardH / 2f else screenH * 0.06f
             List(CARD_COUNT) { i ->
@@ -99,6 +104,8 @@ fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
                     rotation = rnd.nextFloat() * 360f,
                     rotationVel = (rnd.nextFloat() - 0.5f) * 320f,
                     seed = i,
+                    // Cycle through the loaded cards so the stream is varied.
+                    bitmapIndex = i % loaded.size,
                 )
             }
         }
@@ -107,7 +114,9 @@ fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
         LaunchedEffect(cards) {
             var lastNanos = 0L
             var elapsedMs = 0f
-            while (true) {
+            // Run until every card has launched and burst out, then stop (the celebration
+            // can linger until the user taps, and a dead simulation needn't spin a frame loop).
+            while (cards.any { !it.dead }) {
                 withFrameNanos { now ->
                     if (lastNanos != 0L) {
                         val dt = ((now - lastNanos) / 1_000_000_000f).coerceAtMost(0.04f)
@@ -120,12 +129,11 @@ fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
             }
         }
 
-        val srcPieceW = bmp.width / PIECE_COLS
-        val srcPieceH = bmp.height / PIECE_ROWS
         Canvas(Modifier.fillMaxSize()) {
             frame.intValue // subscribe: redraw every simulated frame
             cards.forEach { card ->
                 if (card.dead || card.notYetLaunched) return@forEach
+                val bmp = loaded[card.bitmapIndex]
                 if (!card.exploding) {
                     withTransform({
                         rotate(card.rotation, pivot = Offset(card.x + cardW / 2f, card.y + cardH / 2f))
@@ -143,6 +151,8 @@ fun DeckCompletionCascade(imageUrl: String?, source: Rect) {
                     val t = card.explodeT
                     val alpha = (1f - t).coerceIn(0f, 1f)
                     if (alpha <= 0f) return@forEach
+                    val srcPieceW = bmp.width / PIECE_COLS
+                    val srcPieceH = bmp.height / PIECE_ROWS
                     val pieceW = cardW / PIECE_COLS
                     val pieceH = cardH / PIECE_ROWS
                     shards.forEachIndexed { idx, shard ->
