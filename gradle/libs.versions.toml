@@ -18,6 +18,9 @@ coroutines = "1.9.0"
 coil = "3.5.0"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
+# JetBrains KMP lifecycle fork (same androidx.lifecycle.* packages). Version is what Koin
+# 4.2.1's koin-compose-viewmodel already resolves to, so the graph stays consistent.
+jetbrainsLifecycle = "2.9.6"
 coreKtx = "1.13.1"
 junit = "4.13.2"
 robolectric = "4.16.1"
@@ -34,6 +37,11 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+# Multiplatform lifecycle (commonMain ViewModels: ViewModel, viewModelScope, SavedStateHandle,
+# collectAsStateWithLifecycle). JetBrains fork — packages stay androidx.lifecycle.*.
+lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "jetbrainsLifecycle" }
+lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "jetbrainsLifecycle" }
+lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jetbrainsLifecycle" }
 # Compose runtime/UI deps come from the org.jetbrains.compose plugin via the compose.* DSL
 # accessors (auto-versioned to match composeMultiplatform). The androidx compose-BOM was
 # dropped in the compose-multiplatform migration. Only the JUnit4 test artifacts (no clean

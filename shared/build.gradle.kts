@@ -29,16 +29,9 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.serialization.json)
-        }
-        androidMain.dependencies {
-            implementation(libs.androidx.core.ktx)
-            implementation(libs.androidx.lifecycle.runtime.ktx)
-            implementation(libs.androidx.lifecycle.runtime.compose)
-            implementation(libs.androidx.lifecycle.viewmodel.compose)
-            implementation(libs.androidx.navigation.compose)
 
             // Compose via the org.jetbrains.compose plugin (compose.* DSL accessors auto-version
-            // to the composeMultiplatform release; android target resolves to androidx artifacts).
+            // to the composeMultiplatform release; the android target resolves to androidx).
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.ui)
@@ -46,18 +39,27 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.components.uiToolingPreview)
 
+            // Multiplatform lifecycle (commonMain ViewModels) — JetBrains fork, androidx.* packages.
+            implementation(libs.lifecycle.viewmodel)
+            implementation(libs.lifecycle.viewmodel.savedstate)
+            implementation(libs.lifecycle.runtime.compose)
+            implementation(libs.androidx.navigation.compose)
+
             implementation(libs.koin.core)
-            implementation(libs.koin.android)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
-
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.okhttp)
-            implementation(libs.kotlinx.coroutines.android)
 
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
             implementation(libs.confettikit)
+        }
+        androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.lifecycle.runtime.ktx)
+            implementation(libs.koin.android)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.okhttp)
+            implementation(libs.kotlinx.coroutines.android)
         }
         androidUnitTest.dependencies {
             implementation(libs.junit)
