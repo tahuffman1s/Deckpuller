@@ -58,9 +58,16 @@ fun CardThumbnail(
     modifier: Modifier = Modifier,
     width: Dp = 46.dp,
     height: Dp = 64.dp,
+    isFoil: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
     val placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+    // Foil cards get the same gentle holographic shimmer the pull list shows.
+    val foilShimmer = if (isFoil) {
+        Modifier.animatedFoilSheen(shape = RoundedCornerShape(8.dp), intensity = 0.5f)
+    } else {
+        Modifier
+    }
     AsyncImage(
         model = imageUrl,
         contentDescription = contentDescription,
@@ -72,6 +79,7 @@ fun CardThumbnail(
             .size(width = width, height = height)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(foilShimmer)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
     )
 }

@@ -203,6 +203,7 @@ fun CollectionScreen(
                                 name = card.name,
                                 subtitle = "${card.quantity}× · ${card.setCode}$foil",
                                 imageUrl = scryfallImageUrl(card.scryfallId),
+                                isFoil = card.finish != "normal",
                                 onImageClick = { zoomedCard = card },
                             )
                         }
@@ -229,6 +230,7 @@ private fun CollectionCardRow(
     name: String,
     subtitle: String,
     imageUrl: String?,
+    isFoil: Boolean,
     onImageClick: () -> Unit,
 ) {
     Row(
@@ -241,6 +243,7 @@ private fun CollectionCardRow(
         CardThumbnail(
             imageUrl = imageUrl,
             contentDescription = name,
+            isFoil = isFoil,
             onClick = onImageClick,
         )
         Column(modifier = Modifier.weight(1f)) {
