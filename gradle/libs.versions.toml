@@ -11,7 +11,6 @@ ktor = "3.5.0"
 serialization = "1.8.1"
 coroutines = "1.9.0"
 coil = "3.5.0"
-konfetti = "2.0.4"
 composeBom = "2024.10.01"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
@@ -20,9 +19,10 @@ junit = "4.13.2"
 robolectric = "4.16.1"
 androidxTestCore = "1.6.1"
 turbine = "1.1.0"
-navigationCompose = "2.8.4"
+navigationCompose = "2.9.2"
 datastore = "1.1.1"
 koin = "4.2.1"
+confettikit = "0.8.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -60,14 +60,14 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
-konfetti-compose = { module = "nl.dionsegijn:konfetti-compose", version.ref = "konfetti" }
+confettikit = { module = "io.github.vinceglb:confettikit", version.ref = "confettikit" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
-androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

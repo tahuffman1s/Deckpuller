@@ -53,7 +53,7 @@ kotlin {
 
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
-            implementation(libs.konfetti.compose)
+            implementation(libs.confettikit)
         }
         androidUnitTest.dependencies {
             implementation(libs.junit)

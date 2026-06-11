@@ -17,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import nl.dionsegijn.konfetti.compose.KonfettiView
-import nl.dionsegijn.konfetti.core.Party
-import nl.dionsegijn.konfetti.core.Position
-import nl.dionsegijn.konfetti.core.emitter.Emitter
-import java.util.concurrent.TimeUnit
+import io.github.vinceglb.confettikit.compose.ConfettiKit
+import io.github.vinceglb.confettikit.core.Party
+import io.github.vinceglb.confettikit.core.Position
+import io.github.vinceglb.confettikit.core.emitter.Emitter
+import kotlin.time.Duration.Companion.seconds
 
 /** A festive default for colourless commanders / unknown identities. */
 private val DEFAULT_CONFETTI = listOf(
@@ -68,11 +68,11 @@ fun CelebrationOverlay(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            KonfettiView(
+            ConfettiKit(
                 modifier = Modifier.fillMaxSize(),
                 parties = listOf(
                     Party(
-                        emitter = Emitter(duration = 2, TimeUnit.SECONDS).max(200),
+                        emitter = Emitter(duration = 2.seconds).max(200),
                         colors = confettiColors,
                         position = Position.Relative(0.5, 0.3),
                     ),
