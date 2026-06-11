@@ -6,14 +6,12 @@ import com.deckpuller.data.InvalidDeckUrlException
 import com.deckpuller.data.prefs.UserPreferences
 import com.deckpuller.data.repository.DeckRepository
 import com.deckpuller.domain.model.DeckSummary
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface ImportUiState {
     data object Idle : ImportUiState
@@ -22,8 +20,7 @@ sealed interface ImportUiState {
     data class Imported(val deckId: Long) : ImportUiState
 }
 
-@HiltViewModel
-class ImportViewModel @Inject constructor(
+class ImportViewModel(
     private val repository: DeckRepository,
     userPreferences: UserPreferences,
 ) : ViewModel() {

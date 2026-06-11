@@ -3,13 +3,11 @@ package com.deckpuller.ui.decklist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deckpuller.data.repository.DeckRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class DeckListItem(
     val id: Long,
@@ -20,8 +18,7 @@ data class DeckListItem(
     val commanderScryfallId: String? = null,
 )
 
-@HiltViewModel
-class DeckListViewModel @Inject constructor(
+class DeckListViewModel(
     private val repository: DeckRepository,
 ) : ViewModel() {
 

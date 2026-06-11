@@ -23,24 +23,15 @@ import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.toUserMessage
 import com.deckpuller.ui.AppRoot
 import com.deckpuller.ui.theme.DeckPullerTheme
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface ImportEntryPoint {
-        fun collectionImporter(): CollectionImporter
-        fun collectionRepository(): CollectionRepository
-    }
+    private val collectionImporter: CollectionImporter by inject()
+    private val collectionRepository: CollectionRepository by inject()
 
     @Suppress("DEPRECATION")
     private fun handleIncomingCsv(intent: Intent?) {
@@ -50,11 +41,10 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         if (uri == null) return
-        val entry = EntryPointAccessors.fromApplication(applicationContext, ImportEntryPoint::class.java)
         lifecycleScope.launch {
             val result = runCatching {
-                val text = withContext(Dispatchers.IO) { entry.collectionImporter().readText(uri) }
-                entry.collectionRepository().importCsv(text, System.currentTimeMillis())
+                val text = withContext(Dispatchers.IO) { collectionImporter.readText(uri) }
+                collectionRepository.importCsv(text, System.currentTimeMillis())
             }
             val msg = result.fold(
                 onSuccess = { it.toUserMessage() },

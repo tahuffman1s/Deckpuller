@@ -19,12 +19,11 @@ import com.deckpuller.domain.model.DeckSummary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
 private const val SCRYFALL_BATCH = 75
 private const val SCRYFALL_THROTTLE_MS = 100L
 
-class DefaultDeckRepository @Inject constructor(
+class DefaultDeckRepository(
     private val archidektApi: ArchidektApi,
     private val scryfallApi: ScryfallApi,
     private val dao: DeckDao,

@@ -84,8 +84,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 import coil.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.ui.common.CardImageDialog
@@ -98,7 +98,7 @@ import kotlinx.coroutines.launch
 fun PullRoute(
     onBack: () -> Unit,
     onShoppingList: () -> Unit,
-    viewModel: PullViewModel = hiltViewModel(),
+    viewModel: PullViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()

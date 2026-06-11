@@ -15,15 +15,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Drop-in overlay: checks GitHub for a newer release on first composition and,
  * if found, drives the download/install dialogs. Renders nothing when idle.
  */
 @Composable
-fun UpdateGate(viewModel: UpdateViewModel = hiltViewModel()) {
+fun UpdateGate(viewModel: UpdateViewModel = koinViewModel()) {
     LaunchedEffect(Unit) { viewModel.checkOnce() }
     val status by viewModel.status.collectAsStateWithLifecycle()
 

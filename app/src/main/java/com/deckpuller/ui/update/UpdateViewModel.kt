@@ -4,12 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deckpuller.data.update.UpdateInfo
 import com.deckpuller.data.update.UpdateManager
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface UpdateStatus {
     data object Idle : UpdateStatus
@@ -21,8 +19,7 @@ sealed interface UpdateStatus {
     data class Error(val message: String) : UpdateStatus
 }
 
-@HiltViewModel
-class UpdateViewModel @Inject constructor(
+class UpdateViewModel(
     private val updateManager: UpdateManager,
 ) : ViewModel() {
 

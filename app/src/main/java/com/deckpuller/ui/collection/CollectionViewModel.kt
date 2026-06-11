@@ -7,7 +7,6 @@ import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.toUserMessage
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 data class CollectionUiState(
     val cards: List<CollectionCardEntity> = emptyList(),
@@ -25,8 +23,7 @@ data class CollectionUiState(
     val totalCount: Int = 0,
 )
 
-@HiltViewModel
-class CollectionViewModel @Inject constructor(
+class CollectionViewModel(
     private val repository: CollectionRepository,
     private val importer: CollectionImporter,
 ) : ViewModel() {

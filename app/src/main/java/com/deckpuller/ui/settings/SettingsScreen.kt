@@ -32,8 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 import com.deckpuller.data.update.UpdateInfo
 import com.deckpuller.ui.update.UpdateStatus
 import com.deckpuller.ui.update.UpdateViewModel
@@ -43,7 +43,7 @@ private const val GITHUB_URL = "https://github.com/tahuffman1s/Deckpuller"
 @Composable
 fun SettingsRoute(
     onBack: () -> Unit,
-    viewModel: UpdateViewModel = hiltViewModel(),
+    viewModel: UpdateViewModel = koinViewModel(),
 ) {
     val status by viewModel.status.collectAsStateWithLifecycle()
     SettingsScreen(

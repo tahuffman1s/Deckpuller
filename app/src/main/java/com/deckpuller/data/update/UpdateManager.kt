@@ -7,15 +7,12 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.deckpuller.domain.VersionComparator
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** A newer release available on GitHub. */
 data class UpdateInfo(
@@ -32,10 +29,9 @@ data class UpdateInfo(
  * Updates only install over an existing app signed with the same key, so this is
  * for release-signed builds distributed via GitHub (see docs/AUTO_UPDATE.md).
  */
-@Singleton
-class UpdateManager @Inject constructor(
+class UpdateManager(
     private val okHttpClient: OkHttpClient,
-    @ApplicationContext private val context: Context,
+    private val context: Context,
 ) {
     // A client that surfaces (rather than follows) GitHub's redirect, so we can read the
     // latest tag from the Location header.

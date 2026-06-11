@@ -3,8 +3,8 @@ package com.deckpuller.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,7 +34,7 @@ fun AppRoot() {
 
     NavHost(navController = navController, startDestination = DECK_LIST) {
         composable(DECK_LIST) {
-            val viewModel: DeckListViewModel = hiltViewModel()
+            val viewModel: DeckListViewModel = koinViewModel()
             val items by viewModel.items.collectAsStateWithLifecycle()
             DeckListScreen(
                 decks = items,
@@ -55,7 +55,7 @@ fun AppRoot() {
         }
 
         composable(ADD_DECK) {
-            val viewModel: ImportViewModel = hiltViewModel()
+            val viewModel: ImportViewModel = koinViewModel()
             val state by viewModel.state.collectAsStateWithLifecycle()
             val results by viewModel.results.collectAsStateWithLifecycle()
             val savedUsername by viewModel.savedUsername.collectAsStateWithLifecycle()

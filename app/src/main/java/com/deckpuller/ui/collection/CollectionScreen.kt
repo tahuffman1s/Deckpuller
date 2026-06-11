@@ -41,8 +41,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 import com.deckpuller.data.local.entity.CollectionCardEntity
 import com.deckpuller.ui.common.CardImageDialog
 import com.deckpuller.ui.common.CardThumbnail
@@ -56,7 +56,7 @@ import java.util.Date
 
 @Composable
 fun CollectionRoute(onBack: () -> Unit) {
-    val viewModel: CollectionViewModel = hiltViewModel()
+    val viewModel: CollectionViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.importMessage.collectAsStateWithLifecycle()
     CollectionScreen(

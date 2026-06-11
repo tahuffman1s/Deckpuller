@@ -9,7 +9,6 @@ import com.deckpuller.domain.CardName
 import com.deckpuller.domain.StoreCartLinks
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.domain.model.OwnedInfo
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +16,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ShoppingItem(
     val name: String,
@@ -37,8 +35,7 @@ data class ShoppingUiState(
         items.map { StoreCartLinks.BuyItem(it.name, it.need) }
 }
 
-@HiltViewModel
-class ShoppingListViewModel @Inject constructor(
+class ShoppingListViewModel(
     private val deckRepository: DeckRepository,
     private val collectionRepository: CollectionRepository,
     savedStateHandle: SavedStateHandle,

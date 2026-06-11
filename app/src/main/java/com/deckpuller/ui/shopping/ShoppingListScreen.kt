@@ -43,8 +43,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 import com.deckpuller.R
 import com.deckpuller.domain.StoreCartLinks
 import com.deckpuller.ui.common.CardImageDialog
@@ -57,7 +57,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ShoppingListRoute(onBack: () -> Unit) {
-    val viewModel: ShoppingListViewModel = hiltViewModel()
+    val viewModel: ShoppingListViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     ShoppingListScreen(state = state, onBack = onBack)
 }

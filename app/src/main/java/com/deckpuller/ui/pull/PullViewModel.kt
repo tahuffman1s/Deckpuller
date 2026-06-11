@@ -9,7 +9,6 @@ import com.deckpuller.domain.CardName
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.domain.model.OwnedPrinting
 import com.deckpuller.ui.common.scryfallImageUrl
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +17,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class PullUiState(
     val deckName: String,
@@ -39,8 +37,7 @@ data class PullUiState(
 /** The label shown under a card (Archidekt category, falling back to its type line). */
 internal fun subtitleOf(card: DeckCard): String = card.category.ifBlank { card.typeLine }.trim()
 
-@HiltViewModel
-class PullViewModel @Inject constructor(
+class PullViewModel(
     private val repository: DeckRepository,
     private val collectionRepository: CollectionRepository,
     savedStateHandle: SavedStateHandle,
