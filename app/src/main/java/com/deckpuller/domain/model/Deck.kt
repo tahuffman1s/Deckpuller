@@ -14,6 +14,11 @@ data class DeckCard(
     val requiredQty: Int,
     val pulledQty: Int,
     val category: String = "",
+    // Transient ownership, populated in the ViewModel from the imported collection
+    // (NOT persisted in Room). Defaults keep existing mappers/tests unchanged.
+    val ownedQty: Int = 0,
+    val ownedPrintings: List<OwnedPrinting> = emptyList(),
 ) {
     val isComplete: Boolean get() = pulledQty >= requiredQty
+    val isOwned: Boolean get() = ownedQty >= requiredQty
 }

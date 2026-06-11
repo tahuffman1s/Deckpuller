@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -63,6 +64,7 @@ fun DeckListScreen(
     onAddDeck: () -> Unit,
     onDeleteDeck: (Long) -> Unit,
     onSettings: () -> Unit = {},
+    onCollection: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -71,6 +73,9 @@ fun DeckListScreen(
             TopAppBar(
                 title = { Text("My Decks") },
                 actions = {
+                    IconButton(onClick = onCollection) {
+                        Icon(Icons.Default.Style, contentDescription = "Collection")
+                    }
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }

@@ -81,4 +81,25 @@ class CardRowTest {
         }
         rule.onNodeWithContentDescription("Increment Sol Ring").assertIsNotEnabled()
     }
+
+    @Test
+    fun `shows owned badge when fully owned and collection present`() {
+        val c = card(pulled = 0, required = 1).copy(ownedQty = 2)
+        rule.setContent { CardRow(card = c, collectionPresent = true, onIncrement = {}, onDecrement = {}) }
+        rule.onNodeWithText("Owned", substring = true).assertExists()
+    }
+
+    @Test
+    fun `shows missing badge when not owned and collection present`() {
+        val c = card(pulled = 0, required = 1).copy(ownedQty = 0)
+        rule.setContent { CardRow(card = c, collectionPresent = true, onIncrement = {}, onDecrement = {}) }
+        rule.onNodeWithText("Missing", substring = true).assertExists()
+    }
+
+    @Test
+    fun `hides ownership badge when no collection imported`() {
+        val c = card(pulled = 0, required = 1).copy(ownedQty = 0)
+        rule.setContent { CardRow(card = c, collectionPresent = false, onIncrement = {}, onDecrement = {}) }
+        rule.onNodeWithText("Missing", substring = true).assertDoesNotExist()
+    }
 }

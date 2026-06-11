@@ -3,7 +3,9 @@ package com.deckpuller.ui.pull
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deckpuller.data.repository.CollectionRepository
 import com.deckpuller.data.repository.DeckRepository
+import com.deckpuller.domain.CardName
 import com.deckpuller.domain.model.DeckCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,9 @@ data class PullUiState(
     val subtitles: List<String> = emptyList(),
     val activeFilters: Set<String> = emptySet(),
     val commander: DeckCard? = null,
+    val ownedCards: Int = 0,
+    val ownedTotalCards: Int = 0,
+    val collectionPresent: Boolean = false,
 ) {
     val isComplete: Boolean get() = total > 0 && pulled == total
 }
@@ -35,6 +40,7 @@ internal fun subtitleOf(card: DeckCard): String = card.category.ifBlank { card.t
 @HiltViewModel
 class PullViewModel @Inject constructor(
     private val repository: DeckRepository,
+    private val collectionRepository: CollectionRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -44,31 +50,41 @@ class PullViewModel @Inject constructor(
     val isRefreshing = MutableStateFlow(false)
 
     val state: StateFlow<PullUiState?> =
-        combine(repository.observeDeck(deckId), query, filters) { deck, q, f ->
+        combine(
+            repository.observeDeck(deckId),
+            query,
+            filters,
+            collectionRepository.observeOwnedByName(),
+        ) { deck, q, f, owned ->
             deck?.let {
-                // Category filters narrow first (a card matches if it's in ANY selected
-                // category), then the name search, then alphabetise.
-                val byFilter = if (f.isEmpty()) it.cards
-                    else it.cards.filter { card -> subtitleOf(card) in f }
+                val enriched = it.cards.map { card ->
+                    val info = owned[CardName.normalize(card.name)]
+                    card.copy(
+                        ownedQty = info?.totalQty ?: 0,
+                        ownedPrintings = info?.printings ?: emptyList(),
+                    )
+                }
+                val byFilter = if (f.isEmpty()) enriched
+                    else enriched.filter { card -> subtitleOf(card) in f }
                 val filtered = if (q.isBlank()) byFilter
                     else byFilter.filter { card -> card.name.contains(q, ignoreCase = true) }
                 PullUiState(
                     deckName = it.name,
-                    // One flat list, alphabetical by name (case-insensitive) — no type sections.
                     cards = filtered.sortedBy { card -> card.name.lowercase() },
                     pulled = it.cards.sumOf { card -> card.pulledQty },
                     total = it.cards.sumOf { card -> card.requiredQty },
                     searchQuery = q,
-                    subtitles = it.cards.map(::subtitleOf)
+                    subtitles = enriched.map(::subtitleOf)
                         .filter { s -> s.isNotBlank() && s != "Unknown" }
                         .distinct()
                         .sorted(),
                     activeFilters = f,
-                    // Surfaced next to the deck title; taken from the full deck so it
-                    // shows even while a filter/search hides it from the list.
-                    commander = it.cards.firstOrNull { card ->
+                    commander = enriched.firstOrNull { card ->
                         card.category.contains("Commander", ignoreCase = true)
                     },
+                    ownedCards = enriched.count { card -> card.ownedQty >= card.requiredQty },
+                    ownedTotalCards = enriched.size,
+                    collectionPresent = owned.isNotEmpty(),
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

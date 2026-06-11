@@ -30,4 +30,7 @@ interface DeckRepository {
      * the pull screen from the commander. Returns empty for colourless or on any failure.
      */
     suspend fun colorIdentity(scryfallId: String): List<String>
+
+    /** Cheapest USD price per scryfallId (front of the printing). Missing/failed -> null. */
+    suspend fun prices(scryfallIds: List<String>): Map<String, Double?>
 }
