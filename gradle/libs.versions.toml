@@ -31,8 +31,10 @@ androidxTestCore = "1.6.1"
 turbine = "1.1.0"
 navigationCompose = "2.9.2"
 datastore = "1.1.1"
-koin = "4.2.1"
-confettikit = "0.8.0"
+# Koin/ConfettiKit pinned to their Kotlin-2.2 lines (4.2.1 → Kotlin 2.3.20, ConfettiKit
+# 0.8.0 → Kotlin 2.3.10): their iOS klibs' ABI is too new for the 2.2.20 Native compiler.
+koin = "4.1.0"
+confettikit = "0.7.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
