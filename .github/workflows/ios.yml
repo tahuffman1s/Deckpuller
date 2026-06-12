@@ -23,7 +23,9 @@ jobs:
 
   ipa:
     name: Build unsigned .ipa
-    runs-on: macos-14
+    # macos-15 ships Xcode 16.x, which can open the project format (77) XcodeGen emits;
+    # macos-14's default Xcode is too old ("future Xcode project file format").
+    runs-on: macos-15
     needs: compile
     steps:
       - uses: actions/checkout@v4
