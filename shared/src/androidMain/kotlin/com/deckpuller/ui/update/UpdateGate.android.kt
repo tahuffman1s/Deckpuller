@@ -23,7 +23,8 @@ import org.koin.compose.viewmodel.koinViewModel
  * if found, drives the download/install dialogs. Renders nothing when idle.
  */
 @Composable
-fun UpdateGate(viewModel: UpdateViewModel = koinViewModel()) {
+actual fun UpdateGate() {
+    val viewModel: UpdateViewModel = koinViewModel()
     LaunchedEffect(Unit) { viewModel.checkOnce() }
     val status by viewModel.status.collectAsStateWithLifecycle()
 

@@ -1,4 +1,4 @@
-package com.deckpuller.ui.pull
+package com.deckpuller.platform
 
 import android.content.Context
 import android.os.Build
@@ -14,14 +14,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 
 /**
- * Tactile/audible feedback for the pull loop. A solid click (plus the system click sound,
- * which honours the user's touch-sounds setting) on every pull, and a heftier double-tap on
- * the pull that finishes a card. Where the device supports predefined [VibrationEffect]s
- * (API 29+) we drive the vibrator directly for a more satisfying, stronger feel; otherwise we
- * fall back to the platform [View] haptic constants. Either path respects the user's system
- * haptic setting.
+ * Android haptics: a solid click (plus the system click sound, which honours the user's
+ * touch-sounds setting) on every pull, and a heftier double-tap on the pull that finishes a
+ * card. Where the device supports predefined [VibrationEffect]s (API 29+) we drive the
+ * vibrator directly for a stronger feel; otherwise we fall back to the platform [View] haptic
+ * constants. Either path respects the user's system haptic setting.
  */
-class PullFeedback(private val view: View) {
+private class AndroidHaptics(private val view: View) : Haptics {
     private val context = view.context
 
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -49,16 +48,14 @@ class PullFeedback(private val view: View) {
         return true
     }
 
-    /** One card incremented (but not yet complete) — a solid, confident click. */
-    fun pulled() {
+    override fun pulled() {
         view.playSoundEffect(SoundEffectConstants.CLICK)
         if (!vibratePredefined(VibrationEffect.EFFECT_CLICK)) {
             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         }
     }
 
-    /** The increment that brings a card up to its required count — a satisfying double thunk. */
-    fun completed() {
+    override fun completed() {
         view.playSoundEffect(SoundEffectConstants.CLICK)
         if (!vibratePredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)) {
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -70,16 +67,19 @@ class PullFeedback(private val view: View) {
         }
     }
 
-    /** One card decremented — a light tick so up/down both feel responsive. */
-    fun removed() {
+    override fun removed() {
         if (!vibratePredefined(VibrationEffect.EFFECT_TICK)) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         }
     }
+
+    override fun faceFlipTick() {
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
 }
 
 @Composable
-fun rememberPullFeedback(): PullFeedback {
+actual fun rememberHaptics(): Haptics {
     val view = LocalView.current
-    return remember(view) { PullFeedback(view) }
+    return remember(view) { AndroidHaptics(view) }
 }

@@ -14,6 +14,13 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Generated Compose resources accessor (Res) — pin the package so commonMain code can import it
+// deterministically across all targets.
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.deckpuller.shared.resources"
+}
+
 kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
@@ -38,6 +45,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(compose.components.uiToolingPreview)
+            implementation(compose.components.resources)
 
             // Multiplatform lifecycle (commonMain ViewModels) — JetBrains fork, androidx.* packages.
             implementation(libs.lifecycle.viewmodel)

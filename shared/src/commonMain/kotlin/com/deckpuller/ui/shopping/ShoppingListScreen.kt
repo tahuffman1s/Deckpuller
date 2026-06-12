@@ -1,8 +1,5 @@
 package com.deckpuller.ui.shopping
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,15 +34,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
-import com.deckpuller.shared.R
+import com.deckpuller.platform.rememberUrlOpener
+import com.deckpuller.shared.resources.Res
+import com.deckpuller.shared.resources.ic_cardkingdom
+import com.deckpuller.shared.resources.ic_tcgplayer
 import com.deckpuller.domain.StoreCartLinks
 import com.deckpuller.ui.common.CardImageDialog
 import com.deckpuller.ui.common.CardThumbnail
@@ -65,7 +65,7 @@ fun ShoppingListRoute(onBack: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
-    val context = LocalContext.current
+    val openUrl = rememberUrlOpener()
     val clipboard = LocalClipboardManager.current
     val items = state?.buyItems().orEmpty()
     val snackbar = remember { SnackbarHostState() }
@@ -74,9 +74,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     val listState = rememberLazyListState()
 
     fun open(url: String) {
-        try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        } catch (e: ActivityNotFoundException) {
+        if (!openUrl(url)) {
             clipboard.setText(AnnotatedString(StoreCartLinks.clipboardText(items)))
             scope.launch { snackbar.showSnackbar("No app to open the store — card list copied to clipboard") }
         }
@@ -92,7 +90,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
         SpeedDialAction(
             label = "TCGplayer",
             onClick = { open(StoreCartLinks.tcgPlayerUrl(items)) },
-            icon = { StoreIcon(R.drawable.ic_tcgplayer, "Buy on TCGplayer") },
+            icon = { StoreIcon(Res.drawable.ic_tcgplayer, "Buy on TCGplayer") },
         ),
         SpeedDialAction(
             label = "Card Kingdom",
@@ -101,7 +99,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                 clipboard.setText(AnnotatedString(StoreCartLinks.clipboardText(items)))
                 open(StoreCartLinks.cardKingdomUrl(items))
             },
-            icon = { StoreIcon(R.drawable.ic_cardkingdom, "Buy on Card Kingdom") },
+            icon = { StoreIcon(Res.drawable.ic_cardkingdom, "Buy on Card Kingdom") },
         ),
         SpeedDialAction(
             label = "Copy list",
@@ -209,9 +207,9 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
 
 /** A monochrome store mark, tinted to the speed-dial mini-FAB's content colour. */
 @Composable
-private fun StoreIcon(resId: Int, description: String) {
+private fun StoreIcon(resource: DrawableResource, description: String) {
     Icon(
-        painter = painterResource(resId),
+        painter = painterResource(resource),
         contentDescription = description,
         modifier = Modifier.size(24.dp),
     )

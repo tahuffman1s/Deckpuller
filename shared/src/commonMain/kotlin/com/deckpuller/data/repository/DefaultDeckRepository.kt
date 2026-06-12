@@ -16,6 +16,7 @@ import com.deckpuller.data.remote.dto.ScryfallIdentifier
 import com.deckpuller.data.toDomain
 import com.deckpuller.domain.model.Deck
 import com.deckpuller.domain.model.DeckSummary
+import com.deckpuller.platform.nowMillis
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -52,7 +53,7 @@ class DefaultDeckRepository(
                 name = deckDto.name,
                 archidektId = archidektId,
                 sourceUrl = sourceUrl,
-                importedAt = System.currentTimeMillis(),
+                importedAt = nowMillis(),
             ),
             cards,
         )

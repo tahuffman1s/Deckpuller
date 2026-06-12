@@ -32,34 +32,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.compose.viewmodel.koinViewModel
 import com.deckpuller.data.update.UpdateInfo
 import com.deckpuller.ui.update.UpdateStatus
-import com.deckpuller.ui.update.UpdateViewModel
 
 private const val GITHUB_URL = "https://github.com/tahuffman1s/Deckpuller"
 
+/**
+ * Settings entry point. Android wires the self-update [UpdateViewModel]; iOS supplies a null
+ * status so the Updates card is hidden (app-managed installs aren't permitted there).
+ */
 @Composable
-fun SettingsRoute(
-    onBack: () -> Unit,
-    viewModel: UpdateViewModel = koinViewModel(),
-) {
-    val status by viewModel.status.collectAsStateWithLifecycle()
-    SettingsScreen(
-        currentVersion = viewModel.currentVersion,
-        status = status,
-        onCheck = viewModel::checkNow,
-        onUpdate = viewModel::download,
-        onBack = onBack,
-    )
-}
+expect fun SettingsRoute(onBack: () -> Unit)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     currentVersion: String,
-    status: UpdateStatus,
+    status: UpdateStatus?,
     onCheck: () -> Unit,
     onUpdate: (UpdateInfo) -> Unit,
     onBack: () -> Unit,
@@ -115,19 +104,23 @@ fun SettingsScreen(
                 }
             }
 
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("Updates", style = MaterialTheme.typography.titleMedium)
-                    Button(
-                        onClick = onCheck,
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Check for updates") }
+            // The Updates card only appears on platforms that can self-install (Android). iOS
+            // passes a null status and the card is omitted entirely.
+            if (status != null) {
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("Updates", style = MaterialTheme.typography.titleMedium)
+                        Button(
+                            onClick = onCheck,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Check for updates") }
 
-                    UpdateStatusBlock(status = status, onUpdate = onUpdate)
+                        UpdateStatusBlock(status = status, onUpdate = onUpdate)
+                    }
                 }
             }
         }

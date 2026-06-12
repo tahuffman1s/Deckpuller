@@ -14,9 +14,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import coil3.compose.LocalPlatformContext
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -101,7 +101,7 @@ private class Shard(val vx: Float, val vy: Float, val spin: Float)
 fun DeckCompletionCascade(imageUrls: List<String>, source: Rect) {
     if (imageUrls.isEmpty()) return
 
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     // Every distinct card in the deck — lands included — so the loop eventually shows them all.
     val urls = remember(imageUrls) { imageUrls.distinct() }
     // Decoded progressively at the small size the cascade renders, so even a full deck's worth of
@@ -111,7 +111,7 @@ fun DeckCompletionCascade(imageUrls: List<String>, source: Rect) {
     LaunchedEffect(urls) {
         bitmaps.clear()
         for (url in urls) {
-            context.loadCardBitmap(url, CASCADE_DECODE_PX)?.let { bitmaps.add(it) }
+            loadCardBitmap(context, url, CASCADE_DECODE_PX)?.let { bitmaps.add(it) }
         }
     }
     if (bitmaps.isEmpty()) return

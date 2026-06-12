@@ -18,9 +18,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import coil3.compose.LocalPlatformContext
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -59,11 +59,11 @@ fun CardShatterOverlay(shard: ShatteringCard, onFinished: () -> Unit) {
         return
     }
 
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     var bitmap by remember(shard) { mutableStateOf<ImageBitmap?>(null) }
 
     LaunchedEffect(shard) {
-        val loaded = context.loadCardBitmap(shard.imageUrl)
+        val loaded = loadCardBitmap(context, shard.imageUrl)
         if (loaded == null) onFinished() else bitmap = loaded
     }
 

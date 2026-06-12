@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
+import com.deckpuller.platform.rememberHaptics
 import com.deckpuller.ui.common.animatedFoilSheen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -77,7 +78,7 @@ fun CardRow(
     // press-and-hold keeps (de)incrementing from the current count, not a stale snapshot.
     val currentCard by rememberUpdatedState(card)
     val scope = rememberCoroutineScope()
-    val feedback = rememberPullFeedback()
+    val feedback = rememberHaptics()
     var thumbBounds by remember { mutableStateOf(Rect.Zero) }
 
     // Every pull funnels through here: a tick (or a confirm buzz + fly-away on the

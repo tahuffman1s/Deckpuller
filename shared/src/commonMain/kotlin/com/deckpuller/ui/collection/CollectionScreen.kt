@@ -1,7 +1,5 @@
 package com.deckpuller.ui.collection
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import com.deckpuller.data.local.entity.CollectionCardEntity
+import com.deckpuller.platform.formatImportDate
+import com.deckpuller.platform.nowMillis
+import com.deckpuller.platform.rememberCsvPicker
 import com.deckpuller.ui.common.CardImageDialog
 import com.deckpuller.ui.common.CardThumbnail
 import com.deckpuller.ui.common.CompactSearchField
@@ -51,8 +52,6 @@ import com.deckpuller.ui.common.SpeedDialAction
 import com.deckpuller.ui.common.SpeedDialFab
 import com.deckpuller.ui.common.scryfallImageUrl
 import com.deckpuller.ui.pull.AlphabetIndexedColumn
-import java.text.DateFormat
-import java.util.Date
 
 @Composable
 fun CollectionRoute(onBack: () -> Unit) {
@@ -63,7 +62,7 @@ fun CollectionRoute(onBack: () -> Unit) {
         state = state,
         importMessage = message,
         onSearchChange = viewModel::onSearchChange,
-        onImportUri = { uri -> viewModel.importUri(uri, System.currentTimeMillis()) },
+        onImportCsv = { csv -> viewModel.importCsv(csv, nowMillis()) },
         onMessageShown = viewModel::clearMessage,
         onBack = onBack,
     )
@@ -75,7 +74,7 @@ fun CollectionScreen(
     state: CollectionUiState,
     importMessage: String?,
     onSearchChange: (String) -> Unit,
-    onImportUri: (android.net.Uri) -> Unit,
+    onImportCsv: (String) -> Unit,
     onMessageShown: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -86,14 +85,7 @@ fun CollectionScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
 
-    val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) onImportUri(uri) }
-
-    fun launchPicker() {
-        // Accept any text-ish mime; ManaBox exports vary (text/csv, text/comma-separated-values).
-        picker.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "*/*"))
-    }
+    val launchPicker = rememberCsvPicker { text -> text?.let(onImportCsv) }
 
     // Opening search jumps focus to the field and raises the keyboard automatically.
     LaunchedEffect(searching) {
@@ -119,7 +111,7 @@ fun CollectionScreen(
                     actions = listOf(
                         SpeedDialAction(
                             label = "Import ManaBox CSV",
-                            onClick = ::launchPicker,
+                            onClick = launchPicker,
                             icon = { Icon(Icons.Filled.FileUpload, contentDescription = "Import ManaBox CSV") },
                         ),
                     ),
@@ -147,10 +139,7 @@ fun CollectionScreen(
                         Column {
                             Text("Collection", style = MaterialTheme.typography.titleMedium)
                             if (hasCollection) {
-                                val when_ = state.importedAt?.let {
-                                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                                        .format(Date(it))
-                                } ?: "—"
+                                val when_ = state.importedAt?.let { formatImportDate(it) } ?: "—"
                                 Text(
                                     text = "${state.totalCount} cards · imported $when_",
                                     style = MaterialTheme.typography.labelMedium,

@@ -14,14 +14,6 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 
-/** A newer release available on GitHub. */
-data class UpdateInfo(
-    val versionName: String,
-    val apkUrl: String,
-    val apkSizeBytes: Long,
-    val notes: String,
-)
-
 /**
  * Self-update against the project's GitHub Releases: checks the latest release,
  * downloads its APK, and hands it to the system package installer.

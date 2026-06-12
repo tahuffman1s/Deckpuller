@@ -1,11 +1,5 @@
 package com.deckpuller.ui.common
 
-import android.content.Context
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -24,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,12 +30,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import com.deckpuller.platform.rememberDeviceTilt
+import com.deckpuller.platform.rememberHaptics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -103,10 +96,17 @@ fun CardImageDialog(
         var yaw by remember { mutableFloatStateOf(0f) }
         var pitch by remember { mutableFloatStateOf(0f) }
         // Subtle gyroscopic parallax: a gentle lean added on top of the drag, driven by how the
-        // phone is held. Kept separate from yaw/pitch so they never disturb the face-snap or
-        // which-side-is-up logic — purely a visual flourish (wired up by the sensor below).
-        var tiltX by remember { mutableFloatStateOf(0f) }
-        var tiltY by remember { mutableFloatStateOf(0f) }
+        // phone is held. Kept separate from yaw/pitch so it never disturbs the face-snap or
+        // which-side-is-up logic — purely a visual flourish from the platform tilt sensor.
+        val tilt = rememberDeviceTilt(
+            maxDegrees = MAX_DEVICE_TILT_DEGREES,
+            gain = DEVICE_TILT_GAIN,
+            recenter = DEVICE_TILT_RECENTER,
+            smoothing = DEVICE_TILT_SMOOTHING,
+        )
+        val tiltX = tilt.xDeg
+        val tiltY = tilt.yDeg
+        val haptics = rememberHaptics()
         var settleJob by remember { mutableStateOf<Job?>(null) }
         val springBack = spring<Float>(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -142,50 +142,6 @@ fun CardImageDialog(
         val genericBack = remember { scryfallGenericCardBackUrl("normal") }
         var backUrl by remember(scryfallId) {
             mutableStateOf(scryfallBackFaceUrl(scryfallId, "normal") ?: genericBack)
-        }
-
-        val view = LocalView.current
-
-        val context = LocalContext.current
-        DisposableEffect(Unit) {
-            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            // Game rotation vector is drift-free and magnetometer-free; fall back to the plain
-            // rotation vector (then nothing) so devices without it simply skip the effect.
-            val sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
-                ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-            // Captured on the first reading so tilt is relative to however you're holding the
-            // phone right now, not to some absolute flat-on-a-table pose.
-            var basePitch = Float.NaN
-            var baseRoll = Float.NaN
-            val listener = object : SensorEventListener {
-                private val rotation = FloatArray(9)
-                private val angles = FloatArray(3)
-                override fun onSensorChanged(event: SensorEvent) {
-                    SensorManager.getRotationMatrixFromVector(rotation, event.values)
-                    SensorManager.getOrientation(rotation, angles)
-                    val pitchDeg = Math.toDegrees(angles[1].toDouble()).toFloat()
-                    val rollDeg = Math.toDegrees(angles[2].toDouble()).toFloat()
-                    if (basePitch.isNaN()) {
-                        basePitch = pitchDeg
-                        baseRoll = rollDeg
-                    } else {
-                        // The rest pose drifts toward the current hold, so a steady orientation
-                        // decays back to flat and only active movement produces a lean.
-                        basePitch += (pitchDeg - basePitch) * DEVICE_TILT_RECENTER
-                        baseRoll += (rollDeg - baseRoll) * DEVICE_TILT_RECENTER
-                    }
-                    val targetX = ((pitchDeg - basePitch) * DEVICE_TILT_GAIN)
-                        .coerceIn(-MAX_DEVICE_TILT_DEGREES, MAX_DEVICE_TILT_DEGREES)
-                    val targetY = ((rollDeg - baseRoll) * DEVICE_TILT_GAIN)
-                        .coerceIn(-MAX_DEVICE_TILT_DEGREES, MAX_DEVICE_TILT_DEGREES)
-                    // Low-pass so it eases rather than jitters with raw sensor noise.
-                    tiltX = tiltX * DEVICE_TILT_SMOOTHING + targetX * (1f - DEVICE_TILT_SMOOTHING)
-                    tiltY = tiltY * DEVICE_TILT_SMOOTHING + targetY * (1f - DEVICE_TILT_SMOOTHING)
-                }
-                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-            }
-            sensorManager?.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
-            onDispose { sensorManager?.unregisterListener(listener) }
         }
 
         Box(
@@ -233,7 +189,7 @@ fun CardImageDialog(
                             val half = (yaw / 180f).roundToInt()
                             if (half != lastHalfTurn) {
                                 lastHalfTurn = half
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                haptics.faceFlipTick()
                             }
                         }
                     },

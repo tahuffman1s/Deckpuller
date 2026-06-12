@@ -9,16 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-sealed interface UpdateStatus {
-    data object Idle : UpdateStatus
-    data object Checking : UpdateStatus
-    data object UpToDate : UpdateStatus
-    data class Available(val info: UpdateInfo) : UpdateStatus
-    data class Downloading(val progress: Float) : UpdateStatus
-    data object Installing : UpdateStatus
-    data class Error(val message: String) : UpdateStatus
-}
-
 class UpdateViewModel(
     private val updateManager: UpdateManager,
 ) : ViewModel() {

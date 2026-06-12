@@ -1,7 +1,7 @@
 package com.deckpuller.data.image
 
-import android.content.Context
 import coil3.ImageLoader
+import coil3.PlatformContext
 import coil3.request.ImageRequest
 
 /** Warms an image cache so cards display offline after import. */
@@ -10,7 +10,7 @@ fun interface ImagePrefetcher {
 }
 
 class CoilImagePrefetcher(
-    private val context: Context,
+    private val context: PlatformContext,
     private val imageLoader: ImageLoader,
 ) : ImagePrefetcher {
     override fun prefetch(urls: List<String>) {

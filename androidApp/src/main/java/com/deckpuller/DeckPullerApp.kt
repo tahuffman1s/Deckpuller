@@ -3,7 +3,8 @@ package com.deckpuller
 import android.app.Application
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
-import com.deckpuller.di.appModule
+import com.deckpuller.di.androidModule
+import com.deckpuller.di.sharedModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext
@@ -18,7 +19,7 @@ class DeckPullerApp : Application() {
             startKoin {
                 androidContext(this@DeckPullerApp)
                 androidLogger()
-                modules(appModule)
+                modules(sharedModule, androidModule)
             }
         }
         // Make every AsyncImage / prefetch share the Koin-provided, Ktor-backed ImageLoader.

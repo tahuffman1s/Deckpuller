@@ -22,7 +22,6 @@ import org.junit.Test
 class CollectionViewModelTest {
 
     private val repo = mockk<CollectionRepository>(relaxed = true)
-    private val importer = mockk<com.deckpuller.data.CollectionImporter>(relaxed = true)
 
     @Before fun setUp() = Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
@@ -38,7 +37,7 @@ class CollectionViewModelTest {
         coEvery { repo.observeAll() } returns flowOf(listOf(row("Sol Ring"), row("Rhystic Study")))
         coEvery { repo.importedAt } returns flowOf(123L)
         coEvery { repo.count } returns flowOf(2)
-        val vm = CollectionViewModel(repo, importer)
+        val vm = CollectionViewModel(repo)
 
         vm.onSearchChange("sol")
         vm.state.test {
@@ -53,7 +52,7 @@ class CollectionViewModelTest {
     @Test
     fun `importCsv success message includes skipped when nonzero`() = runTest {
         coEvery { repo.importCsv("csv", 1L) } returns CollectionImportResult(imported = 10, skipped = 2)
-        val vm = CollectionViewModel(repo, importer)
+        val vm = CollectionViewModel(repo)
         vm.importCsv("csv", 1L)
         advanceUntilIdle()
         assertEquals("Imported 10 cards · 2 skipped", vm.importMessage.value)
@@ -62,7 +61,7 @@ class CollectionViewModelTest {
     @Test
     fun `importCsv success message omits skipped when zero`() = runTest {
         coEvery { repo.importCsv("csv", 1L) } returns CollectionImportResult(imported = 5, skipped = 0)
-        val vm = CollectionViewModel(repo, importer)
+        val vm = CollectionViewModel(repo)
         vm.importCsv("csv", 1L)
         advanceUntilIdle()
         assertEquals("Imported 5 cards", vm.importMessage.value)
@@ -71,7 +70,7 @@ class CollectionViewModelTest {
     @Test
     fun `importCsv failure message uses class name when message null`() = runTest {
         coEvery { repo.importCsv("csv", 1L) } throws RuntimeException()
-        val vm = CollectionViewModel(repo, importer)
+        val vm = CollectionViewModel(repo)
         vm.importCsv("csv", 1L)
         advanceUntilIdle()
         assertEquals("Import failed: RuntimeException", vm.importMessage.value)
