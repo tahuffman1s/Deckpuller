@@ -1,7 +1,6 @@
 package com.deckpuller.di
 
 import androidx.room.Room
-import coil3.PlatformContext
 import com.deckpuller.data.CollectionImporter
 import com.deckpuller.data.local.AppDatabase
 import com.deckpuller.data.local.buildDeckPullerDatabase
@@ -15,10 +14,15 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/** Android-specific bindings: the platform context, Room/DataStore on disk, and self-update. */
+/** Android-specific bindings: Room/DataStore on disk, and self-update.
+ *
+ * Note: `PlatformContext` (a typealias for `android.content.Context` on Android) is NOT
+ * registered here — koin-android already makes the `Context` injectable via
+ * `androidContext(app)`, so `get<PlatformContext>()` in the shared module resolves to it.
+ * Registering `single<PlatformContext> { androidContext() }` would resolve itself recursively
+ * (StackOverflowError), since `androidContext()` is just `get<Context>()`.
+ */
 val androidModule = module {
-    single<PlatformContext> { androidContext() }
-
     single {
         Room.databaseBuilder<AppDatabase>(androidContext(), "deckpuller.db")
             .buildDeckPullerDatabase(Dispatchers.IO)
