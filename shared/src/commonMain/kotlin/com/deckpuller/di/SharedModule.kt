@@ -1,10 +1,8 @@
 package com.deckpuller.di
 
-import coil3.ImageLoader
-import coil3.PlatformContext
-import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.deckpuller.data.image.CoilImagePrefetcher
 import com.deckpuller.data.image.ImagePrefetcher
+import com.deckpuller.data.image.newImageLoader
 import com.deckpuller.data.local.AppDatabase
 import com.deckpuller.data.remote.ArchidektApi
 import com.deckpuller.data.remote.ScryfallApi
@@ -39,11 +37,7 @@ val sharedModule = module {
     single { get<AppDatabase>().deckDao() }
     single { get<AppDatabase>().collectionDao() }
 
-    single {
-        ImageLoader.Builder(get<PlatformContext>())
-            .components { add(KtorNetworkFetcherFactory(get<HttpClient>())) }
-            .build()
-    }
+    single { newImageLoader(get(), get<HttpClient>()) }
     single<ImagePrefetcher> { CoilImagePrefetcher(get(), get()) }
 
     single<DeckRepository> { DefaultDeckRepository(get(), get(), get(), get()) }
