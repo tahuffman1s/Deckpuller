@@ -54,6 +54,14 @@ import com.deckpuller.ui.common.SpeedDialFab
 import com.deckpuller.ui.common.scryfallImageUrl
 import com.deckpuller.ui.pull.AlphabetIndexedColumn
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToLong
+
+/** Formats a dollar amount to 2 decimals (multiplatform; no JVM String.format). */
+private fun usd(value: Double): String {
+    val cents = abs((value * 100).roundToLong())
+    return "${cents / 100}.${(cents % 100).toString().padStart(2, '0')}"
+}
 
 @Composable
 fun ShoppingListRoute(onBack: () -> Unit) {
@@ -131,7 +139,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                         Text("Missing cards", style = MaterialTheme.typography.titleMedium)
                         if (state != null && state.items.isNotEmpty()) {
                             Text(
-                                text = "${state.items.size} cards · ~$${"%.2f".format(state.totalPrice)} (Scryfall)",
+                                text = "${state.items.size} cards · ~$${usd(state.totalPrice)} (Scryfall)",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -183,7 +191,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                                     modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    text = item.unitPrice?.let { "$${"%.2f".format(it * item.need)}" } ?: "—",
+                                    text = item.unitPrice?.let { "$${usd(it * item.need)}" } ?: "—",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

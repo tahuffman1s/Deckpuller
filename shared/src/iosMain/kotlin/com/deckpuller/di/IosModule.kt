@@ -12,6 +12,7 @@ import org.koin.dsl.module
 /** iOS-specific bindings: the platform context, the on-disk Room DB and DataStore. */
 val iosModule = module {
     single<PlatformContext> { PlatformContext.INSTANCE }
-    single { iosAppDatabaseBuilder().buildDeckPullerDatabase(Dispatchers.IO) }
+    // Dispatchers.IO is internal on Kotlin/Native; Default is the public multiplatform pool.
+    single { iosAppDatabaseBuilder().buildDeckPullerDatabase(Dispatchers.Default) }
     single { UserPreferences(createDataStore { iosDataStorePath() }) }
 }

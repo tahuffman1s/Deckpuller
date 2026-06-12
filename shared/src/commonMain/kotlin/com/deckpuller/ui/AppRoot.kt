@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.savedstate.read
 import com.deckpuller.ui.decklist.DeckListScreen
 import com.deckpuller.ui.decklist.DeckListViewModel
 import com.deckpuller.ui.importdeck.AddDeckScreen
@@ -85,7 +86,7 @@ fun AppRoot() {
             route = "$PULL/{deckId}",
             arguments = listOf(navArgument("deckId") { type = NavType.LongType }),
         ) { backStackEntry ->
-            val deckId = backStackEntry.arguments?.getLong("deckId") ?: 0L
+            val deckId = backStackEntry.arguments?.read { getLong("deckId") } ?: 0L
             PullRoute(
                 onBack = { navController.popBackStack() },
                 onShoppingList = { navController.navigate("$SHOPPING/$deckId") },
