@@ -27,6 +27,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.deckpuller
+        # App icon from Sources/Assets.xcassets/AppIcon.appiconset (single 1024 universal).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # CI builds unsigned; SideStore re-signs with a free Apple ID at install time.
         CODE_SIGNING_ALLOWED: "NO"
         CODE_SIGNING_REQUIRED: "NO"
