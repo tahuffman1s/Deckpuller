@@ -20,6 +20,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSMotionUsageDescription: "Used to tilt and shimmer cards as you move your phone."
+        # Required by Compose Multiplatform: without this, CMP throws PlistSanityCheck on
+        # iPhone launch (instant SIGABRT after the first frame). Also unlocks >60fps on
+        # ProMotion displays, which the scrolling-smoothness work relies on.
+        CADisableMinimumFrameDurationOnPhone: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.deckpuller
