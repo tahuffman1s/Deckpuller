@@ -9,6 +9,7 @@ import com.deckpuller.data.prefs.UserPreferences
 import com.deckpuller.data.prefs.createDataStore
 import com.deckpuller.data.update.UpdateManager
 import com.deckpuller.ui.update.UpdateViewModel
+import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -20,7 +21,7 @@ val androidModule = module {
 
     single {
         Room.databaseBuilder<AppDatabase>(androidContext(), "deckpuller.db")
-            .buildDeckPullerDatabase()
+            .buildDeckPullerDatabase(Dispatchers.IO)
     }
 
     single {

@@ -12,10 +12,13 @@ hilt = "2.58"
 room = "2.8.4"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
-ktor = "3.5.0"
+# Ktor/Coil pinned to their Kotlin-2.2 line: 3.5.0 ships iOS klibs built with Kotlin 2.3.21,
+# whose ABI the project's Kotlin 2.2.20 Native compiler can't consume (the JVM/Android build
+# tolerates it; Kotlin/Native is strict). 3.3.x is the last line built with Kotlin 2.2.
+ktor = "3.3.0"
 serialization = "1.8.1"
 coroutines = "1.9.0"
-coil = "3.5.0"
+coil = "3.3.0"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 # JetBrains KMP lifecycle fork (same androidx.lifecycle.* packages). Version is what Koin

@@ -2,7 +2,6 @@ package com.deckpuller.domain
 
 import platform.Foundation.NSDiacriticInsensitiveSearch
 import platform.Foundation.NSString
-import platform.Foundation.stringByFoldingWithOptions
 
 /**
  * iOS diacritic stripping. `java.text.Normalizer` and `\p{Mn}` regex aren't available on

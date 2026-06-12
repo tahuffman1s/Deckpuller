@@ -7,7 +7,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
 import platform.Foundation.NSUTF8StringEncoding
-import platform.Foundation.stringWithContentsOfURL
 import platform.UIKit.UIDocumentPickerViewController
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UniformTypeIdentifiers.UTTypeCommaSeparatedText
