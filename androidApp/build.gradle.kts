@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -40,7 +41,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 full-mode: strips/optimizes the app and is what makes a shipped Compose build
+            // feel smooth (the debug build skips all of this). Library keep-rules live in
+            // proguard-rules.pro; verify on-device after any dependency change.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -91,4 +96,8 @@ dependencies {
     implementation(libs.koin.compose.viewmodel)
     // Needed to set Coil 3's singleton ImageLoader from the Koin-provided, Ktor-backed loader.
     implementation(libs.coil.compose)
+    // Installs the generated baseline profile at runtime so hot code paths are AOT-compiled.
+    implementation(libs.androidx.profileinstaller)
+    // Consumes the profile produced by the :baselineprofile generator module into the release APK.
+    baselineProfile(project(":baselineprofile"))
 }
