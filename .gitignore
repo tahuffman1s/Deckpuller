@@ -50,3 +50,10 @@ google-services.json
 
 # Local example/personal collection exports (ManaBox CSVs)
 ManaBox_Collection_*.csv
+
+# iOS — XcodeGen-generated project + xcodebuild output + .ipa packaging
+iosApp/DeckPuller.xcodeproj/
+iosApp/Sources/Info.plist
+Payload/
+*.ipa
+DerivedData/

@@ -25,6 +25,15 @@ kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
     sourceSets {
         commonMain.dependencies {
             implementation(libs.room.runtime)
@@ -69,6 +78,9 @@ kotlin {
             implementation(libs.okhttp)
             implementation(libs.kotlinx.coroutines.android)
         }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
         androidUnitTest.dependencies {
             implementation(libs.junit)
             implementation(libs.robolectric)
@@ -89,6 +101,8 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.room.compiler)
     add("kspCommonMainMetadata", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
 // Coil 3.5.0 (via coil-core-android) constrains kotlin-stdlib to 2.4.0, whose metadata
