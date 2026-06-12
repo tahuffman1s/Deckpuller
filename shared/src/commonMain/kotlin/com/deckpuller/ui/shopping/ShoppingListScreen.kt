@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import com.deckpuller.platform.platformShowsClipboardConfirmation
 import com.deckpuller.platform.rememberUrlOpener
 import com.deckpuller.shared.resources.Res
 import com.deckpuller.shared.resources.ic_cardkingdom
@@ -89,8 +90,11 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     }
 
     fun copy() {
-        // Android 13+ shows its own clipboard confirmation, so don't add our own snackbar.
         clipboard.setText(AnnotatedString(StoreCartLinks.clipboardText(items)))
+        // Android 13+ shows its own clipboard confirmation; elsewhere (iOS) surface our own.
+        if (!platformShowsClipboardConfirmation()) {
+            scope.launch { snackbar.showSnackbar("Card list copied to clipboard") }
+        }
     }
 
     val hasItems = state != null && state.items.isNotEmpty()
