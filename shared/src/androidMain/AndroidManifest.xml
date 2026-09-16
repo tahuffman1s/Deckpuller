@@ -1,1 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Haptics.android.kt drives the vibrator directly for the stronger pull/complete effects,
+      so this module declares the permission it needs rather than relying on whichever app
+      consumes it. Manifest merging propagates it to androidApp (which already declares it,
+      making the merge a no-op there) and it lets lint see the permission when it analyses
+      this library on its own.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+</manifest>
