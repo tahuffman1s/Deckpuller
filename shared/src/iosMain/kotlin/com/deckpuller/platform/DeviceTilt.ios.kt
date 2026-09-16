@@ -2,10 +2,9 @@ package com.deckpuller.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import platform.CoreMotion.CMMotionManager
 import platform.Foundation.NSOperationQueue
 import kotlin.math.PI
@@ -23,8 +22,8 @@ actual fun rememberDeviceTilt(
     gain: Float,
     recenter: Float,
     smoothing: Float,
-): Tilt {
-    var tilt by remember { mutableStateOf(Tilt(0f, 0f)) }
+): State<Tilt> {
+    val tilt = remember { mutableStateOf(Tilt(0f, 0f)) }
     DisposableEffect(Unit) {
         val manager = CMMotionManager()
         var basePitch = Float.NaN
@@ -49,7 +48,7 @@ actual fun rememberDeviceTilt(
                     val targetY = ((rollDeg - baseRoll) * gain).coerceIn(-maxDegrees, maxDegrees)
                     tx = tx * smoothing + targetX * (1f - smoothing)
                     ty = ty * smoothing + targetY * (1f - smoothing)
-                    tilt = Tilt(tx, ty)
+                    tilt.value = Tilt(tx, ty)
                 }
             }
         }

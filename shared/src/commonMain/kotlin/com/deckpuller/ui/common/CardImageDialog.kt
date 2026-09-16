@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -104,8 +105,6 @@ fun CardImageDialog(
             recenter = DEVICE_TILT_RECENTER,
             smoothing = DEVICE_TILT_SMOOTHING,
         )
-        val tiltX = tilt.xDeg
-        val tiltY = tilt.yDeg
         val haptics = rememberHaptics()
         var settleJob by remember { mutableStateOf<Job?>(null) }
         val springBack = spring<Float>(
@@ -118,11 +117,17 @@ fun CardImageDialog(
         )
 
         // Which face points at us: the back is showing while yaw sits in the rear half-turn.
-        val norm = ((yaw % 360f) + 360f) % 360f
-        val showBack = norm > 90f && norm < 270f
+        // Derived rather than read straight, so a drag only recomposes on the frame the card
+        // actually turns past an edge instead of on every pointer event.
+        val showBack by remember {
+            derivedStateOf {
+                val norm = ((yaw % 360f) + 360f) % 360f
+                norm > 90f && norm < 270f
+            }
+        }
 
         val idleTransition = rememberInfiniteTransition(label = "foil-idle")
-        val idle by idleTransition.animateFloat(
+        val idle = idleTransition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -132,10 +137,16 @@ fun CardImageDialog(
             label = "foil-idle-sweep",
         )
         // Idle drift plus a slide that tracks how far the card is turned/tilted — including the
-        // gyro lean, so foils throw a little extra glint as you tip the phone.
-        val sweep = idle + sin(yaw * PI.toFloat() / 180f) * 0.6f -
-            (pitch / MAX_PITCH_DEGREES) * 0.4f +
-            (tiltY / MAX_DEVICE_TILT_DEGREES) * 0.25f
+        // gyro lean, so foils throw a little extra glint as you tip the phone. Evaluated inside
+        // the draw phase (like the graphicsLayer below), so neither the drag nor the sensor
+        // stream recomposes the dialog to keep the sheen moving.
+        val sweep: () -> Float = remember {
+            {
+                idle.value + sin(yaw * PI.toFloat() / 180f) * 0.6f -
+                    (pitch / MAX_PITCH_DEGREES) * 0.4f +
+                    (tilt.value.yDeg / MAX_DEVICE_TILT_DEGREES) * 0.25f
+            }
+        }
 
         // Back face: the real reverse of a double-faced card, falling back to the standard
         // Magic back when that 404s (single-faced cards have no real back).
@@ -198,8 +209,8 @@ fun CardImageDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            rotationY = yaw + tiltY
-                            rotationX = pitch + tiltX
+                            rotationY = yaw + tilt.value.yDeg
+                            rotationX = pitch + tilt.value.xDeg
                             cameraDistance = 16f * density
                         },
                 ) {

@@ -16,6 +16,7 @@ import com.deckpuller.data.remote.dto.ScryfallIdentifier
 import com.deckpuller.data.toDomain
 import com.deckpuller.domain.model.Deck
 import com.deckpuller.domain.model.DeckSummary
+import com.deckpuller.ui.common.scryfallSized
 import com.deckpuller.platform.nowMillis
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -47,7 +48,7 @@ class DefaultDeckRepository(
         val cards = deckDto.cards.map { entry ->
             buildCard(deckId = 0, entry = entry, scryfall = scryfallById[entry.card.uid], pulled = 0)
         }
-        imagePrefetcher.prefetch(cards.mapNotNull { it.imageUrl })
+        imagePrefetcher.prefetch(cardArtToPrefetch(cards))
         return dao.insertDeckWithCards(
             DeckEntity(
                 name = deckDto.name,
@@ -73,7 +74,7 @@ class DefaultDeckRepository(
                 pulled = prior.coerceAtMost(entry.quantity),
             )
         }
-        imagePrefetcher.prefetch(cards.mapNotNull { it.imageUrl })
+        imagePrefetcher.prefetch(cardArtToPrefetch(cards))
         dao.replaceCards(deckId, deckDto.name, cards)
     }
 
@@ -131,3 +132,13 @@ class DefaultDeckRepository(
         pulledQty = pulled,
     )
 }
+
+/**
+ * Both renditions the app shows: the `small` thumbnail every list row renders, and the
+ * full-size art behind a tap. Warming only the full-size one left every row re-fetching a
+ * separate URL on first scroll.
+ */
+private fun cardArtToPrefetch(cards: List<CardEntity>): List<String> =
+    cards.mapNotNull { it.imageUrl }
+        .flatMap { url -> listOfNotNull(scryfallSized(url, "small"), url) }
+        .distinct()

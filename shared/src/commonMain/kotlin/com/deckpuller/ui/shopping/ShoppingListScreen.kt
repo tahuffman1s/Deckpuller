@@ -81,6 +81,8 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var zoomedItem by remember { mutableStateOf<ShoppingItem?>(null) }
     val listState = rememberLazyListState()
+    // See CollectionScreen: keep the rail's name list off the recomposition path.
+    val names = remember(state?.items) { state?.items.orEmpty().map { it.name } }
 
     fun open(url: String) {
         if (!openUrl(url)) {
@@ -164,7 +166,7 @@ fun ShoppingListScreen(state: ShoppingUiState?, onBack: () -> Unit) {
                 }
             } else {
                 AlphabetIndexedColumn(
-                    names = state!!.items.map { it.name },
+                    names = names,
                     listState = listState,
                     modifier = Modifier.fillMaxSize(),
                 ) { listModifier ->

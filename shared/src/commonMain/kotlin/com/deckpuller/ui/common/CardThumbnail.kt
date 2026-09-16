@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -26,6 +27,30 @@ fun scryfallImageUrl(scryfallId: String?, version: String = "small"): String? {
     val id = scryfallId?.trim()?.lowercase()?.takeIf { it.length >= 2 } ?: return null
     return "https://cards.scryfall.io/$version/front/${id[0]}/${id[1]}/$id.jpg"
 }
+
+/**
+ * Scryfall's CDN paths carry the image size as their first segment
+ * (`cards.scryfall.io/<size>/front/<a>/<b>/<id>.jpg`), so an existing URL can be retargeted
+ * at a different size without another API call. Thumbnails ask for `small` (146x204):
+ * `normal` is 488x680, and decoding one of those for a 46x64dp row costs several
+ * milliseconds and ~8x the bytes over the wire — enough to stutter a fling.
+ *
+ * Anything that isn't a recognised Scryfall JPEG path is returned untouched.
+ */
+fun scryfallSized(url: String?, version: String): String? {
+    if (url == null || !url.endsWith(".jpg")) return url
+    val marker = "cards.scryfall.io/"
+    val hostEnd = url.indexOf(marker)
+    if (hostEnd < 0) return url
+    val start = hostEnd + marker.length
+    val end = url.indexOf('/', start)
+    if (end < 0) return url
+    val current = url.substring(start, end)
+    if (current !in SCRYFALL_JPEG_SIZES || current == version) return url
+    return url.substring(0, start) + version + url.substring(end)
+}
+
+private val SCRYFALL_JPEG_SIZES = setOf("small", "normal", "large", "art_crop", "border_crop")
 
 /**
  * Scryfall's canonical "card back" id — the standard brown Magic back, served from the
@@ -61,7 +86,10 @@ fun CardThumbnail(
     isFoil: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
-    val placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+    val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
+    val placeholder = remember(placeholderColor) { ColorPainter(placeholderColor) }
+    // A row thumbnail never needs more than Scryfall's `small` rendition.
+    val thumbUrl = remember(imageUrl) { scryfallSized(imageUrl, "small") }
     // Foil cards get the same gentle holographic shimmer the pull list shows.
     val foilShimmer = if (isFoil) {
         Modifier.animatedFoilSheen(shape = RoundedCornerShape(8.dp), intensity = 0.5f)
@@ -69,7 +97,7 @@ fun CardThumbnail(
         Modifier
     }
     AsyncImage(
-        model = imageUrl,
+        model = thumbUrl,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         placeholder = placeholder,

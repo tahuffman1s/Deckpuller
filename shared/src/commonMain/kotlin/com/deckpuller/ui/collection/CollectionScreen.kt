@@ -84,6 +84,9 @@ fun CollectionScreen(
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
+    // Held across recompositions so the rail doesn't rebuild a whole-collection name
+    // list (and its alphabet index) every time the screen recomposes.
+    val names = remember(state.cards) { state.cards.map { it.name } }
 
     val launchPicker = rememberCsvPicker { text -> text?.let(onImportCsv) }
 
@@ -177,7 +180,7 @@ fun CollectionScreen(
                 }
             } else {
                 AlphabetIndexedColumn(
-                    names = state.cards.map { it.name },
+                    names = names,
                     listState = listState,
                     modifier = Modifier.fillMaxSize(),
                 ) { listModifier ->

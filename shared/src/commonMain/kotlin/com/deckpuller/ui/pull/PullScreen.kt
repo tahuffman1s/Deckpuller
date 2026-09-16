@@ -1,8 +1,5 @@
 package com.deckpuller.ui.pull
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,10 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -57,13 +52,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,22 +69,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.ui.common.CardImageDialog
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -174,55 +162,12 @@ fun PullScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val alphabetIndex = remember(state.cards) { buildAlphabetIndex(state.cards) }
+    val cardNames = remember(state.cards) { state.cards.map { it.name } }
 
-    // Floating letter indicator: while scrubbing the rail it tracks the letter and
-    // vertical position under the thumb; while the list flings on its own it shows the
-    // first visible card's initial, hovering just above centre.
-    var scrub by remember { mutableStateOf<RailScrub?>(null) }
-    val scrollLetter by remember(state.cards) {
-        derivedStateOf {
-            state.cards.getOrNull(listState.firstVisibleItemIndex)
-                ?.name?.firstOrNull()?.uppercaseChar()?.takeIf { it.isLetter() } ?: '#'
-        }
-    }
-    // After a scrub ends the list keeps settling (a programmatic scroll), which would
-    // otherwise flash the centred scroll-bubble — making it "pop up in the middle" of
-    // the rail. Suppress the scroll-driven bubble from the moment a scrub begins until
-    // the list comes fully to rest.
-    var suppressScrollBubble by remember { mutableStateOf(false) }
-    LaunchedEffect(scrub != null) {
-        if (scrub != null) {
-            suppressScrollBubble = true
-        } else {
-            // The rail's jump is launched asynchronously, so the programmatic scroll can
-            // begin a frame or two AFTER the finger lifts. Hold the suppression past that
-            // window, then wait for the list to come fully to rest — otherwise the bubble
-            // flashes in the middle when scrubbing to the very top or bottom.
-            delay(300)
-            snapshotFlow { listState.isScrollInProgress }.first { !it }
-            suppressScrollBubble = false
-        }
-    }
-    val bubbleLetter = scrub?.letter ?: scrollLetter
-    val showLetterBubble = alphabetIndex.isNotEmpty() && (
-        scrub != null ||
-            // A pull-to-refresh also scrolls the list, but shouldn't summon the bubble.
-            (listState.isScrollInProgress && !suppressScrollBubble && !isRefreshing)
-        )
-    // The bubble's letter and position are frozen while it's hidden, so the fade-out
-    // after lifting off the rail doesn't visibly jump to the scroll position/letter —
-    // it just fades where it sat. They only refresh while the bubble is actually shown.
-    var bubbleScrubbing by remember { mutableStateOf(false) }
-    var bubbleFraction by remember { mutableStateOf(0.28f) }
-    var renderedLetter by remember { mutableStateOf(bubbleLetter) }
-    LaunchedEffect(showLetterBubble, scrub, bubbleLetter) {
-        if (showLetterBubble) {
-            bubbleScrubbing = scrub != null
-            bubbleFraction = scrub?.fraction ?: 0.28f
-            renderedLetter = bubbleLetter
-        }
-    }
-    val density = LocalDensity.current
+    // The rail's scrub position. Held as a State, never unwrapped here: ScrollLetterBubble
+    // is the only reader, and reading it (or the scroll position) in this scope would
+    // recompose the entire screen — top bar, list and all — on every frame of a fling.
+    val scrub = remember { mutableStateOf<RailScrub?>(null) }
 
     // The whole screen lives in this box so the deck-complete celebration can be layered
     // above the Scaffold (and its top bar) and darken everything.
@@ -337,7 +282,6 @@ fun PullScreen(
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val areaHeightPx = constraints.maxHeight
                     val areaWidthPx = constraints.maxWidth
-                    val bubbleSizePx = with(density) { 64.dp.toPx() }
                     Row(modifier = Modifier.fillMaxSize()) {
                         // Rail on the LEFT edge; the list fills the rest to its right.
                         if (alphabetIndex.isNotEmpty()) {
@@ -348,7 +292,7 @@ fun PullScreen(
                                         scope.launch { listState.scrollToItem(index) }
                                     }
                                 },
-                                onScrubChange = { scrub = it },
+                                onScrubChange = { scrub.value = it },
                                 modifier = Modifier.padding(vertical = 8.dp),
                             )
                         }
@@ -381,26 +325,17 @@ fun PullScreen(
                             }
                         }
                     }
-                    LetterBubbleOverlay(
-                        visible = showLetterBubble,
-                        letter = renderedLetter,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset {
-                                // While scrubbing, sit just inside the left rail and track
-                                // the thumb; while flinging, centre over the list and hover
-                                // just above the middle of the screen. Uses the frozen
-                                // values so the exit fade doesn't jump.
-                                val xPx = if (bubbleScrubbing) {
-                                    with(density) { 48.dp.toPx() }
-                                } else {
-                                    (areaWidthPx - bubbleSizePx) / 2f
-                                }
-                                val yPx = (bubbleFraction * areaHeightPx - bubbleSizePx / 2f)
-                                    .toInt()
-                                    .coerceIn(0, (areaHeightPx - bubbleSizePx).toInt().coerceAtLeast(0))
-                                IntOffset(xPx.toInt().coerceAtLeast(0), yPx)
-                            },
+                    ScrollLetterBubble(
+                        names = cardNames,
+                        listState = listState,
+                        scrub = scrub,
+                        hasIndex = alphabetIndex.isNotEmpty(),
+                        areaWidthPx = areaWidthPx,
+                        areaHeightPx = areaHeightPx,
+                        // A pull-to-refresh also scrolls the list, but shouldn't
+                        // summon the bubble.
+                        suppressed = isRefreshing,
+                        modifier = Modifier.align(Alignment.TopStart),
                     )
                 }
             }
@@ -631,37 +566,5 @@ private fun CompactSearchField(
                 bottom = 4.dp,
             ),
         )
-    }
-}
-
-/** Fades the floating letter bubble in/out. Standalone so the non-scoped AnimatedVisibility resolves. */
-@Composable
-private fun LetterBubbleOverlay(visible: Boolean, letter: Char, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-        modifier = modifier,
-    ) {
-        LetterBubble(letter)
-    }
-}
-
-/** Big circular letter that floats over the list while scrolling or scrubbing the rail. */
-@Composable
-private fun LetterBubble(letter: Char) {
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 6.dp,
-        modifier = Modifier.size(64.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = letter.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
     }
 }

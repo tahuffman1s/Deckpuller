@@ -28,11 +28,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -41,6 +39,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
@@ -55,6 +54,7 @@ import coil3.compose.AsyncImage
 import com.deckpuller.domain.model.DeckCard
 import com.deckpuller.platform.rememberHaptics
 import com.deckpuller.ui.common.animatedFoilSheen
+import com.deckpuller.ui.common.scryfallSized
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -79,7 +79,12 @@ fun CardRow(
     val currentCard by rememberUpdatedState(card)
     val scope = rememberCoroutineScope()
     val feedback = rememberHaptics()
-    var thumbBounds by remember { mutableStateOf(Rect.Zero) }
+    // Deliberately a plain holder rather than a MutableState. onGloballyPositioned fires on
+    // every layout pass, so a scrolling list would write a new Rect per row per frame — and
+    // a snapshot write means recomposing every visible row, every frame, for a value nothing
+    // reads until a card is actually completed. Stashing the coordinates costs one field
+    // assignment and the bounds are resolved lazily at that moment instead.
+    val thumbAnchor = remember { ThumbAnchor() }
 
     // Every pull funnels through here: a tick (or a confirm buzz + fly-away on the
     // increment that finishes the card), then the actual state change.
@@ -87,7 +92,7 @@ fun CardRow(
         if (!c.isComplete) {
             if (c.pulledQty + 1 >= c.requiredQty) {
                 feedback.completed()
-                onCardCompleted(c, thumbBounds)
+                onCardCompleted(c, thumbAnchor.bounds())
             } else {
                 feedback.pulled()
             }
@@ -122,7 +127,11 @@ fun CardRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val thumbnailPlaceholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+        val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
+        val thumbnailPlaceholder = remember(placeholderColor) { ColorPainter(placeholderColor) }
+        // card.imageUrl is the full-size art the zoom dialog and the shatter overlay want;
+        // the 46x64dp row only needs Scryfall's `small` rendition.
+        val thumbUrl = remember(card.imageUrl) { scryfallSized(card.imageUrl, "small") }
         // Owned-foil cards get a gentle holographic shimmer right in the list.
         val foilShimmer = if (card.isFoil) {
             Modifier.animatedFoilSheen(shape = RoundedCornerShape(8.dp), intensity = 0.5f)
@@ -130,7 +139,7 @@ fun CardRow(
             Modifier
         }
         AsyncImage(
-            model = card.imageUrl,
+            model = thumbUrl,
             contentDescription = card.name,
             contentScale = ContentScale.Crop,
             placeholder = thumbnailPlaceholder,
@@ -138,7 +147,7 @@ fun CardRow(
             fallback = thumbnailPlaceholder,
             modifier = Modifier
                 .size(width = 46.dp, height = 64.dp)
-                .onGloballyPositioned { thumbBounds = it.boundsInRoot() }
+                .onGloballyPositioned { thumbAnchor.coordinates = it }
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .then(foilShimmer)
@@ -216,6 +225,18 @@ fun CardRow(
             Icon(Icons.Filled.Add, contentDescription = null)
         }
     }
+}
+
+/**
+ * Keeps the thumbnail's layout coordinates outside the snapshot system so positioning a row
+ * never invalidates composition; [bounds] resolves them on demand, when a completed card
+ * needs a launch point for the fly-into-deck animation.
+ */
+private class ThumbAnchor {
+    var coordinates: LayoutCoordinates? = null
+
+    fun bounds(): Rect =
+        coordinates?.takeIf { it.isAttached }?.boundsInRoot() ?: Rect.Zero
 }
 
 @Composable

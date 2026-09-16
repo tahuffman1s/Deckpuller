@@ -6,10 +6,9 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -24,9 +23,9 @@ actual fun rememberDeviceTilt(
     gain: Float,
     recenter: Float,
     smoothing: Float,
-): Tilt {
+): State<Tilt> {
     val context = LocalContext.current
-    var tilt by remember { mutableStateOf(Tilt(0f, 0f)) }
+    val tilt = remember { mutableStateOf(Tilt(0f, 0f)) }
 
     DisposableEffect(Unit) {
         val sensorManager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
@@ -57,7 +56,7 @@ actual fun rememberDeviceTilt(
                 val targetY = ((rollDeg - baseRoll) * gain).coerceIn(-maxDegrees, maxDegrees)
                 tx = tx * smoothing + targetX * (1f - smoothing)
                 ty = ty * smoothing + targetY * (1f - smoothing)
-                tilt = Tilt(tx, ty)
+                tilt.value = Tilt(tx, ty)
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
