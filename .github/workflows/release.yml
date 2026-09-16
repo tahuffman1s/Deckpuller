@@ -58,6 +58,14 @@ jobs:
             echo "::warning::KEYSTORE_BASE64 secret is not set — release artifacts will be UNSIGNED and cannot be installed/published as-is. See docs/RELEASING.md."
           fi
 
+      - name: Require signing
+        if: steps.keystore.outputs.signing != 'true'
+        run: |
+          echo "::error::Refusing to publish: KEYSTORE_BASE64 is not set, so the artifacts" \
+               "would be unsigned. The in-app updater downloads the attached APK directly" \
+               "(UpdateManager.kt), and an unsigned APK will not install. See docs/RELEASING.md."
+          exit 1
+
       - name: Build release APK + AAB
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
@@ -73,9 +81,13 @@ jobs:
       - name: Collect & name artifacts
         id: artifacts
         run: |
+          set -euo pipefail
           mkdir -p release
-          APK="$(ls app/build/outputs/apk/release/*.apk | head -n1)"
-          AAB="app/build/outputs/bundle/release/app-release.aab"
+          # Paths follow the Gradle module, which the KMP port renamed app/ -> androidApp/.
+          APK="$(ls androidApp/build/outputs/apk/release/*.apk | head -n1)"
+          AAB="$(ls androidApp/build/outputs/bundle/release/*.aab | head -n1)"
+          # The in-app updater builds its download URL from this exact name
+          # (UpdateManager.kt), so the DeckPuller-<version>.apk form must not change.
           cp "$APK" "release/DeckPuller-${{ steps.ver.outputs.version }}.apk"
           cp "$AAB" "release/DeckPuller-${{ steps.ver.outputs.version }}.aab"
           ls -la release

@@ -4,7 +4,7 @@ DeckPuller ships with two GitHub Actions workflows:
 
 | Workflow | File | Trigger | What it does |
 |----------|------|---------|--------------|
-| **CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | push / PR to `main`, manual | Android Lint → unit tests → debug APK; uploads the APK and the test/lint reports as run artifacts. |
+| **CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | push / PR to `main`, manual | Android Lint → unit tests → debug APK → release APK (R8). Uploads both APKs and the test/lint reports. **Install `release-apk-perf-testing`, not `debug-apk`, when judging performance** — a debug build is neither R8-optimised nor AOT-compiled, so it says nothing about how the shipped app performs. It is debug-signed, so uninstall any release-signed copy first. |
 | **Release** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | push a `v*` tag, or manual dispatch | Builds a **signed** release APK **and** AAB, then publishes a GitHub Release with auto-generated notes and both files attached. |
 
 Both run on `ubuntu-latest` with JDK 17 and cached Gradle.
