@@ -53,6 +53,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import coil3.compose.AsyncImage
 import com.deckpuller.ui.common.CardImageDialog
+import com.deckpuller.ui.common.scryfallSized
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,10 +113,15 @@ private fun DeckRow(deck: DeckListItem, onClick: () -> Unit, onDelete: () -> Uni
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        val placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
+        val placeholderColor = MaterialTheme.colorScheme.surfaceVariant
+        val placeholder = remember(placeholderColor) { ColorPainter(placeholderColor) }
         val hasArt = deck.commanderImageUrl != null
+        // The row art is a 48x64dp slot; the zoom dialog below still gets the full-size URL.
+        val artUrl = remember(deck.commanderImageUrl) {
+            scryfallSized(deck.commanderImageUrl, "small")
+        }
         AsyncImage(
-            model = deck.commanderImageUrl,
+            model = artUrl,
             contentDescription = "Commander",
             contentScale = ContentScale.Crop,
             placeholder = placeholder,
