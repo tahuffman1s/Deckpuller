@@ -28,6 +28,15 @@ android {
     val keystorePath = System.getenv("KEYSTORE_FILE")
     val hasReleaseKeystore = keystorePath != null && file(keystorePath).exists()
 
+    // Opt-in escape hatch for performance testing: `-PdebugSignRelease=true` signs the
+    // release build with the debug key so it can be installed on a device without the
+    // release keystore. That matters because a debug APK is not a usable measure of how
+    // the app performs — it is not R8-optimised and, being debuggable, ART will not
+    // AOT-compile it or apply the baseline profile, so everything runs interpreted/JIT.
+    // Never set this in release.yml: the resulting APK is not publishable and cannot
+    // upgrade over a properly signed install.
+    val debugSignRelease = project.findProperty("debugSignRelease") == "true"
+
     signingConfigs {
         if (hasReleaseKeystore) {
             create("release") {
@@ -50,7 +59,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = if (hasReleaseKeystore) signingConfigs.getByName("release") else null
+            signingConfig = when {
+                hasReleaseKeystore -> signingConfigs.getByName("release")
+                debugSignRelease -> signingConfigs.getByName("debug")
+                else -> null
+            }
         }
     }
     compileOptions {

@@ -47,8 +47,10 @@ jobs:
 
       # Release is the only variant that runs R8, and release.yml only fires on a tag — so a
       # missing keep rule would first surface in a shipped APK. Build it here instead.
+      # Debug-signed so it is actually installable for performance testing: the debug APK
+      # below is not a valid measure of how the app performs on a device.
       - name: Assemble release APK (R8)
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease -PdebugSignRelease=true --stacktrace
 
       - name: Upload debug APK
         if: success()
@@ -56,6 +58,16 @@ jobs:
         with:
           name: debug-apk
           path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+
+      # THIS is the one to install when judging how the app feels. Debug-signed, so
+      # uninstall any Play/release build first (signature mismatch blocks the upgrade).
+      - name: Upload release APK (for performance testing)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk-perf-testing
+          path: androidApp/build/outputs/apk/release/*.apk
           if-no-files-found: ignore
 
       - name: Upload test & lint reports
